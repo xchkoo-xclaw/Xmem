@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type InterceptorFn = (value: any) => any;
 
+const routerMock = vi.hoisted(() => ({
+  currentRoute: { value: { name: "home", fullPath: "/" } as any },
+  replace: vi.fn(),
+}));
+
 const axiosMock = vi.hoisted(() => {
   const requestHandlers: InterceptorFn[] = [];
   const responseSuccessHandlers: InterceptorFn[] = [];
@@ -38,12 +43,14 @@ const axiosMock = vi.hoisted(() => {
 });
 
 vi.mock("axios", () => ({ default: axiosMock, create: axiosMock.create }));
+vi.mock("../../src/router", () => ({ default: routerMock }));
 
 describe("api client", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
     localStorage.clear();
+    routerMock.currentRoute.value = { name: "home", fullPath: "/" } as any;
   });
 
   it("请求拦截器会在 token 存在时设置 Authorization", async () => {
@@ -55,14 +62,16 @@ describe("api client", () => {
     expect(cfg.headers.Authorization).toBe("Bearer t");
   });
 
-  it("响应拦截器在 401 时会输出 warn，并继续 reject", async () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  it("响应拦截器在 401 时会清除 token 并尝试跳转登录", async () => {
+    localStorage.setItem("token", "t");
+    routerMock.currentRoute.value = { name: "todos", fullPath: "/todos?x=1" } as any;
     const api = (await import("../../src/api/client")).default as any;
 
     const errHandler = api.__handlers.responseErrorHandlers[0];
     const error = { response: { status: 401 } };
     await expect(errHandler(error)).rejects.toBe(error);
-    expect(warnSpy).toHaveBeenCalled();
+    expect(localStorage.getItem("token")).toBeNull();
+    expect(routerMock.replace).toHaveBeenCalledWith({ name: "login", query: { redirect: "/todos?x=1" } });
   });
 });
 

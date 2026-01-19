@@ -97,6 +97,14 @@ router.beforeEach((to, from, next) => {
   const userStore = useUserStore();
   const ui = useUiStore();
   const isAuthRoute = to.name === 'login' || to.name === 'register';
+  const tokenInStorage = localStorage.getItem("token") || "";
+
+  if (userStore.token !== tokenInStorage) {
+    userStore.token = tokenInStorage;
+    if (!tokenInStorage) {
+      userStore.profile = null;
+    }
+  }
 
   if (!userStore.token && !isAuthRoute) {
     next({

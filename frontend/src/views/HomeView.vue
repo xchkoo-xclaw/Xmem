@@ -2,15 +2,6 @@
   <div class="home-view min-h-screen bg-primary text-gray-900 flex flex-col items-center">
     <header class="w-full max-w-4xl px-4 pt-8 pb-4 flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <img
-          src="/favicon.png"
-          alt="Xmem"
-          class="h-6 w-6 rounded-lg shadow-sm"
-          width="24"
-          height="24"
-          loading="eager"
-          decoding="async"
-        />
         <div class="text-xl font-bold leading-none">Xmem</div>
       </div>
       <div class="flex items-center gap-3 text-sm">

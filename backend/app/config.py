@@ -8,6 +8,21 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24
     redis_url: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
+
+    app_env: str = Field(default="local", env="APP_ENV")
+    allow_insecure_http: bool = Field(default=True, env="ALLOW_INSECURE_HTTP")
+    csrf_trusted_origins: str = Field(
+        default="http://localhost:5173,http://127.0.0.1:5173,https://localhost:5173,https://127.0.0.1:5173",
+        env="CSRF_TRUSTED_ORIGINS",
+    )
+
+    password_min_length: int = Field(default=10, env="PASSWORD_MIN_LENGTH")
+    password_max_length: int = Field(default=128, env="PASSWORD_MAX_LENGTH")
+    password_require_upper: bool = Field(default=True, env="PASSWORD_REQUIRE_UPPER")
+    password_require_lower: bool = Field(default=True, env="PASSWORD_REQUIRE_LOWER")
+    password_require_digit: bool = Field(default=True, env="PASSWORD_REQUIRE_DIGIT")
+    password_require_symbol: bool = Field(default=True, env="PASSWORD_REQUIRE_SYMBOL")
+    password_disallow_whitespace: bool = Field(default=True, env="PASSWORD_DISALLOW_WHITESPACE")
     
     # OCR 配置
     ocr_provider: str = Field(default="local", env="OCR_PROVIDER")  # "local" 或 "remote"

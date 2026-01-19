@@ -1,6 +1,5 @@
 import { defineStore } from "pinia";
 import api from "../api/client";
-import { hashPassword } from "../utils/crypto";
 import { useDataStore } from "./data";
 
 interface UserProfile {
@@ -17,6 +16,20 @@ export const useUserStore = defineStore("user", {
   }),
   actions: {
     /**
+     * 校验当前页面是否处于 HTTPS 传输环境（本地开发环境除外）。
+     */
+    assertSecureTransport() {
+      if (typeof window === "undefined") return;
+      const { protocol, hostname } = window.location;
+      const isLocal =
+        hostname === "localhost" ||
+        hostname === "127.0.0.1" ||
+        hostname === "[::1]";
+      if (protocol !== "https:" && !isLocal) {
+        throw new Error("为保障账号安全，登录/注册/改密仅允许在 HTTPS 环境下进行");
+      }
+    },
+    /**
      * 清理与当前登录态相关的前端缓存，避免切换账号时短暂展示旧数据。
      */
     clearClientCache() {
@@ -27,9 +40,8 @@ export const useUserStore = defineStore("user", {
     async login(email: string, password: string) {
       this.loading = true;
       try {
-        // 前端加密密码
-        const hashedPassword = await hashPassword(password);
-        const { data } = await api.post("/auth/login", { email, password: hashedPassword });
+        this.assertSecureTransport();
+        const { data } = await api.post("/auth/login", { email, password });
         this.token = data.access_token;
         localStorage.setItem("token", data.access_token);
         await this.fetchProfile();
@@ -38,14 +50,13 @@ export const useUserStore = defineStore("user", {
       }
     },
     async register(email: string, password: string, user_name?: string) {
-      // 前端加密密码
-      const hashedPassword = await hashPassword(password);
+      this.assertSecureTransport();
       await api.post("/auth/register", { 
         email, 
-        password: hashedPassword,
+        password,
         user_name: user_name || null
       });
-      // 注册成功后直接使用加密后的密码登录
+      // 注册成功后直接使用同一明文密码登录
       await this.login(email, password);
     },
     async fetchProfile() {
@@ -54,12 +65,10 @@ export const useUserStore = defineStore("user", {
       this.profile = data;
     },
     async changePassword(oldPassword: string, newPassword: string) {
-      // 前端加密密码
-      const hashedOldPassword = await hashPassword(oldPassword);
-      const hashedNewPassword = await hashPassword(newPassword);
+      this.assertSecureTransport();
       await api.post("/auth/change-password", {
-        old_password: hashedOldPassword,
-        new_password: hashedNewPassword
+        old_password: oldPassword,
+        new_password: newPassword
       });
     },
     logout() {

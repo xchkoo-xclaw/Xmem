@@ -1,9 +1,11 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 import logging
+from fastapi.responses import JSONResponse
 
 from .db import engine, Base
 from .routers import auth, notes, ledger, todos
 from .auth import get_current_user
+from .config import settings
 
 # 配置日志
 logging.basicConfig(
@@ -12,13 +14,53 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-# FastAPI 会自动从 X-Forwarded-Proto 头识别 HTTPS 请求
-# Nginx 已经设置了这些头，所以不需要额外的中间件
 app = FastAPI(title="Xmem API")
+
+def is_request_secure(request: Request) -> bool:
+    """判断请求是否为 HTTPS（支持反向代理透传的 X-Forwarded-Proto）。"""
+    forwarded = request.headers.get("x-forwarded-proto")
+    if forwarded:
+        proto = forwarded.split(",")[0].strip().lower()
+        return proto == "https"
+    return request.url.scheme.lower() == "https"
+
+
+def get_csrf_trusted_origins() -> set[str]:
+    """解析 CSRF 可信 Origin 列表（逗号分隔）。"""
+    raw = settings.csrf_trusted_origins or ""
+    items = [x.strip() for x in raw.split(",")]
+    return {x for x in items if x}
+
+
+@app.middleware("http")
+async def security_middleware(request: Request, call_next):
+    """统一处理 HTTPS 强制、CSRF Origin 校验与安全响应头。"""
+    trusted = get_csrf_trusted_origins()
+
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        origin = request.headers.get("origin")
+        if origin and trusted and origin not in trusted:
+            return JSONResponse(status_code=403, content={"detail": "CSRF 校验失败：Origin 不受信任"})
+
+    if (
+        request.method == "POST"
+        and request.url.path in {"/auth/login", "/auth/register", "/auth/change-password"}
+        and not settings.allow_insecure_http
+        and not is_request_secure(request)
+    ):
+        return JSONResponse(status_code=400, content={"detail": "认证请求必须通过 HTTPS 发送"})
+
+    response = await call_next(request)
+
+    if is_request_secure(request):
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+
+    return response
 
 
 @app.on_event("startup")
 async def on_startup():
+    """启动时确保数据库表结构存在。"""
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
@@ -29,6 +71,7 @@ async def on_startup():
 
 @app.get("/health")
 async def health():
+    """健康检查接口。"""
     return {"status": "ok"}
 
 
