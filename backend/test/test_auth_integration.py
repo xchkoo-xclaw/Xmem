@@ -63,7 +63,7 @@ class TestAuthIntegration:
                 "/auth/register",
                 json={
                     "email": "newuser@example.com",
-                    "password": "hashed_password_123",
+                    "password": "Strong_password_123!",
                     "user_name": "New User"
                 }
             )
@@ -89,6 +89,8 @@ class TestAuthIntegration:
                 mock_result = MagicMock()
                 mock_result.scalars.return_value.first.return_value = new_user
                 mock_session.execute = AsyncMock(return_value=mock_result)
+                mock_session.add = MagicMock()
+                mock_session.commit = AsyncMock()
                 yield mock_session
             
             app.dependency_overrides[get_session] = override_get_session_login
@@ -98,7 +100,7 @@ class TestAuthIntegration:
                     "/auth/login",
                     json={
                         "email": "newuser@example.com",
-                        "password": "hashed_password_123"
+                        "password": "Strong_password_123!"
                     }
                 )
                 
@@ -141,6 +143,8 @@ class TestAuthIntegration:
                 mock_result = MagicMock()
                 mock_result.scalars.return_value.first.return_value = mock_user
                 mock_session.execute = AsyncMock(return_value=mock_result)
+                mock_session.add = MagicMock()
+                mock_session.commit = AsyncMock()
                 yield mock_session
             
             app.dependency_overrides[get_session] = override_get_session_login
@@ -150,7 +154,7 @@ class TestAuthIntegration:
                     "/auth/login",
                     json={
                         "email": "test@example.com",
-                        "password": "hashed_password_123"
+                        "password": "Strong_password_123!"
                     }
                 )
                 
@@ -176,8 +180,8 @@ class TestAuthIntegration:
                 change_response = client.post(
                     "/auth/change-password",
                     json={
-                        "old_password": "hashed_password_123",
-                        "new_password": "hashed_new_password"
+                        "old_password": "Old_password_123!",
+                        "new_password": "New_password_123!"
                     },
                     headers={"Authorization": f"Bearer {access_token}"}
                 )
@@ -199,6 +203,8 @@ class TestAuthIntegration:
                 mock_result = MagicMock()
                 mock_result.scalars.return_value.first.return_value = updated_user
                 mock_session.execute = AsyncMock(return_value=mock_result)
+                mock_session.add = MagicMock()
+                mock_session.commit = AsyncMock()
                 yield mock_session
             
             app.dependency_overrides[get_session] = override_get_session_new_login
@@ -208,7 +214,7 @@ class TestAuthIntegration:
                     "/auth/login",
                     json={
                         "email": "test@example.com",
-                        "password": "hashed_new_password"
+                        "password": "New_password_123!"
                     }
                 )
                 
@@ -251,7 +257,7 @@ class TestAuthErrorScenarios:
                 "/auth/register",
                 json={
                     "email": "user@example.com",
-                    "password": "correct_password"
+                    "password": "Strong_password_123!"
                 }
             )
             assert register_response.status_code == 200
@@ -270,6 +276,8 @@ class TestAuthErrorScenarios:
                 mock_result = MagicMock()
                 mock_result.scalars.return_value.first.return_value = registered_user
                 mock_session.execute = AsyncMock(return_value=mock_result)
+                mock_session.add = MagicMock()
+                mock_session.commit = AsyncMock()
                 yield mock_session
             
             app.dependency_overrides[get_session] = override_get_session_login
@@ -308,7 +316,7 @@ class TestAuthErrorScenarios:
                 "/auth/register",
                 json={
                     "email": "test@example.com",
-                    "password": "password"
+                    "password": "Strong_password_123!"
                 }
             )
             
@@ -351,6 +359,8 @@ class TestUserIsolation:
                 mock_result = MagicMock()
                 mock_result.scalars.return_value.first.return_value = user1
                 mock_session.execute = AsyncMock(return_value=mock_result)
+                mock_session.add = MagicMock()
+                mock_session.commit = AsyncMock()
                 yield mock_session
             
             app.dependency_overrides[get_session] = override_get_session
@@ -360,7 +370,7 @@ class TestUserIsolation:
                     "/auth/login",
                     json={
                         "email": "user1@example.com",
-                        "password": "password1"
+                        "password": "Strong_password_123!"
                     }
                 )
                 

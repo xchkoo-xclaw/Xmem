@@ -9,7 +9,8 @@ from datetime import datetime, timezone
 from app.main import app
 from app import models
 from app.db import get_session
-from app.auth import get_current_user, verify_password, create_access_token
+from app.auth import get_current_user, verify_password, create_access_token, hash_password
+from app.config import settings
 
 
 # ========== Fixtures ==========
@@ -79,7 +80,7 @@ class TestRegister:
                 "/auth/register",
                 json={
                     "email": "newuser@example.com",
-                    "password": "hashed_password_123",
+                    "password": "Strong_password_123!",
                     "user_name": "New User"
                 }
             )
@@ -113,7 +114,7 @@ class TestRegister:
                 "/auth/register",
                 json={
                     "email": "test@example.com",
-                    "password": "hashed_password_123",
+                    "password": "Strong_password_123!",
                     "user_name": "Test User"
                 }
             )
@@ -150,7 +151,7 @@ class TestRegister:
                 "/auth/register",
                 json={
                     "email": "newuser@example.com",
-                    "password": "hashed_password_123"
+                    "password": "Strong_password_123!"
                 }
             )
             
@@ -197,6 +198,72 @@ class TestRegister:
         finally:
             app.dependency_overrides.clear()
 
+    def test_register_weak_password(self, client):
+        """测试弱密码注册会被拒绝"""
+        async def override_get_session():
+            mock_session = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.scalars.return_value.first.return_value = None
+            mock_session.execute = AsyncMock(return_value=mock_result)
+            yield mock_session
+
+        app.dependency_overrides[get_session] = override_get_session
+
+        try:
+            response = client.post(
+                "/auth/register",
+                json={
+                    "email": "newuser@example.com",
+                    "password": "abc",
+                    "user_name": "New User"
+                }
+            )
+            assert response.status_code == 400
+            assert "密码" in response.json()["detail"]
+        finally:
+            app.dependency_overrides.clear()
+
+
+class TestPasswordHashing:
+    """测试密码哈希与校验"""
+
+    def test_hash_password_not_reversible(self):
+        """测试哈希后的密码不可逆（不等于明文）且可校验"""
+        plain = "Strong_password_123!"
+        hashed = hash_password(plain)
+        assert hashed != plain
+        assert verify_password(plain, hashed) is True
+        assert verify_password("Wrong_password_123!", hashed) is False
+
+
+class TestSecurityMiddleware:
+    """测试安全中间件（CSRF/HTTPS）"""
+
+    def test_csrf_rejects_untrusted_origin(self, client):
+        """测试不可信 Origin 的写请求会被拒绝"""
+        response = client.post(
+            "/auth/login",
+            json={"email": "test@example.com", "password": "Strong_password_123!"},
+            headers={"Origin": "https://evil.example.com"}
+        )
+        assert response.status_code == 403
+        assert "CSRF" in response.json()["detail"]
+
+    def test_auth_requires_https_when_configured(self, client):
+        """测试在开启强制 HTTPS 后，认证请求不允许走 HTTP"""
+        old = settings.allow_insecure_http
+        settings.allow_insecure_http = False
+        try:
+            response = client.post(
+                "/auth/login",
+                json={"email": "test@example.com", "password": "Strong_password_123!"},
+                headers={"X-Forwarded-Proto": "http"}
+            )
+            assert response.status_code == 400
+            assert "HTTPS" in response.json()["detail"]
+        finally:
+            settings.allow_insecure_http = old
+
 
 # ========== 测试登录 ==========
 
@@ -219,6 +286,8 @@ class TestLogin:
             mock_result = MagicMock()
             mock_result.scalars.return_value.first.return_value = mock_user
             mock_session.execute = AsyncMock(return_value=mock_result)
+            mock_session.add = MagicMock()
+            mock_session.commit = AsyncMock()
             yield mock_session
         
         app.dependency_overrides[get_session] = override_get_session
@@ -228,7 +297,7 @@ class TestLogin:
                 "/auth/login",
                 json={
                     "email": "test@example.com",
-                    "password": "hashed_password_123"
+                    "password": "Strong_password_123!"
                 }
             )
             
@@ -254,6 +323,8 @@ class TestLogin:
             mock_result = MagicMock()
             mock_result.scalars.return_value.first.return_value = mock_user
             mock_session.execute = AsyncMock(return_value=mock_result)
+            mock_session.add = MagicMock()
+            mock_session.commit = AsyncMock()
             yield mock_session
         
         app.dependency_overrides[get_session] = override_get_session
@@ -282,6 +353,8 @@ class TestLogin:
             mock_result = MagicMock()
             mock_result.scalars.return_value.first.return_value = None
             mock_session.execute = AsyncMock(return_value=mock_result)
+            mock_session.add = MagicMock()
+            mock_session.commit = AsyncMock()
             yield mock_session
         
         app.dependency_overrides[get_session] = override_get_session
@@ -369,8 +442,8 @@ class TestChangePassword:
             response = client.post(
                 "/auth/change-password",
                 json={
-                    "old_password": "hashed_old_password",
-                    "new_password": "hashed_new_password"
+                    "old_password": "Old_password_123!",
+                    "new_password": "New_password_123!"
                 },
                 headers={"Authorization": f"Bearer {mock_token}"}
             )

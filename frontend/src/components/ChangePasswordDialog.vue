@@ -118,7 +118,7 @@ const handleSubmit = async () => {
     toast.success("密码修改成功");
     emit("saved");
   } catch (err: any) {
-    error.value = err.response?.data?.detail || "密码修改失败";
+    error.value = err.response?.data?.detail || err?.message || "密码修改失败";
   } finally {
     saving.value = false;
   }

@@ -139,7 +139,7 @@ const handleSubmit = async () => {
     }
     await router.replace(getRedirectTarget());
   } catch (err: any) {
-    error.value = err.response?.data?.detail || (isLogin.value ? "登录失败" : "注册失败");
+    error.value = err.response?.data?.detail || err?.message || (isLogin.value ? "登录失败" : "注册失败");
   } finally {
     loading.value = false;
   }

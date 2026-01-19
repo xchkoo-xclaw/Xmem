@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">95% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>22/22</span>
+                <span class='fraction'>38/40</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>2/2</span>
+                <span class='fraction'>2/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/0</span>
+                <span class='fraction'>0/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">95% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>22/22</span>
+                <span class='fraction'>38/40</span>
             </div>
         
             
@@ -93,7 +93,24 @@
 <a name='L28'></a><a href='#L28'>28</a>
 <a name='L29'></a><a href='#L29'>29</a>
 <a name='L30'></a><a href='#L30'>30</a>
-<a name='L31'></a><a href='#L31'>31</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -101,6 +118,8 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -112,8 +131,23 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -130,6 +164,8 @@ const api = axios.create({
   timeout: 8000
 });
 &nbsp;
+let authRedirecting = false;
+&nbsp;
 api.interceptors.request.use((config) =&gt; {
   const token = localStorage.getItem("token");
   if (token) {
@@ -140,12 +176,27 @@ api.interceptors.request.use((config) =&gt; {
 &nbsp;
 // 响应拦截器：处理错误，但不自动清除 token（让组件决定）
 api.interceptors.response.use(
-  (response) =&gt; response,
-  (error) =&gt; {
-    // 如果是 401 未授权，可能是 token 过期，但不自动清除
-    // 让组件根据具体情况决定是否清除 token
-    if (error.response?.status === 401) {
-      console.warn("API 请求未授权，可能需要重新登录");
+<span class="fstat-no" title="function not covered" >  (response) =&gt; response,</span>
+  async (error) =&gt; {
+    const status = error?.response?.status;
+    if (status === <span class="branch-0 cbranch-no" title="branch not covered" >401 || status === 403) {</span>
+      localStorage.removeItem("token");
+      if (!authRedirecting) {
+        authRedirecting = true;
+        try {
+          const { default: router } = await import("../router");
+          const current = router.currentRoute.value;
+          const isAuthRoute = current.name === "login" || current.name === "register";
+          if (!isAuthRoute) {
+            await router.replace({ name: "login", query: { redirect: current.fullPath } });
+          }
+<span class="branch-0 cbranch-no" title="branch not covered" >        } catch {</span>
+<span class="cstat-no" title="statement not covered" >          const redirect = encodeURIComponent(window.location.pathname + window.location.search + window.location.hash);</span>
+<span class="cstat-no" title="statement not covered" >          window.location.href = `/login?redirect=${redirect}`;</span>
+        } finally {
+          authRedirecting = false;
+        }
+      }
     }
     return Promise.reject(error);
   }
@@ -160,7 +211,7 @@ export default api;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-01-10T20:24:42.385Z
+                at 2026-01-19T18:25:18.144Z
             </div>
         <script src="../prettify.js"></script>
         <script>

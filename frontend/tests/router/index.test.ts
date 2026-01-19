@@ -58,6 +58,7 @@ describe("router/index", () => {
     const { useUserStore } = await import("../../src/stores/user");
     const user = useUserStore();
     user.token = "t";
+    localStorage.setItem("token", "t");
 
     await router.push({ name: "login" });
     await router.isReady();
@@ -87,6 +88,7 @@ describe("router/index", () => {
     const user = useUserStore();
     const ui = useUiStore();
     user.token = "t";
+    localStorage.setItem("token", "t");
 
     const startSpy = vi.spyOn(ui, "startRouteTransition");
     const finishSpy = vi.spyOn(ui, "finishRouteTransition");
@@ -96,6 +98,30 @@ describe("router/index", () => {
 
     expect(startSpy).toHaveBeenCalledTimes(1);
     expect(finishSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("token 仅存在于 store 但 localStorage 为空时，应允许进入 login", async () => {
+    vi.mock("../../src/views/HomeView.vue", () => stubSfc("HomeView"));
+    vi.mock("../../src/views/NotesView.vue", () => stubSfc("NotesView"));
+    vi.mock("../../src/views/LedgersView.vue", () => stubSfc("LedgersView"));
+    vi.mock("../../src/views/TodosView.vue", () => stubSfc("TodosView"));
+    vi.mock("../../src/views/LedgerStatisticsView.vue", () => stubSfc("LedgerStatisticsView"));
+    vi.mock("../../src/views/NoteEditor.vue", () => stubSfc("NoteEditor"));
+    vi.mock("../../src/views/NoteView.vue", () => stubSfc("NoteView"));
+    vi.mock("../../src/views/LedgerView.vue", () => stubSfc("LedgerView"));
+    vi.mock("../../src/views/NotFound.vue", () => stubSfc("NotFound"));
+    vi.mock("../../src/views/ServerError.vue", () => stubSfc("ServerError"));
+    vi.mock("../../src/components/Auth.vue", () => stubSfc("Auth"));
+
+    const router = (await import("../../src/router")).default;
+    const { useUserStore } = await import("../../src/stores/user");
+    const user = useUserStore();
+    user.token = "stale";
+    localStorage.removeItem("token");
+
+    await router.push({ name: "login" });
+    await router.isReady();
+    expect(router.currentRoute.value.name).toBe("login");
   });
 
   it("scrollBehavior 对 home 和 savedPosition 生效", async () => {

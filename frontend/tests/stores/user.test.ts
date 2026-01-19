@@ -13,15 +13,6 @@ vi.mock("../../src/api/client", () => {
   };
 });
 
-vi.mock("../../src/utils/crypto", () => {
-  return {
-    /**
-     * 将密码 hash，用于登录/修改密码测试。
-     */
-    hashPassword: vi.fn(async (password: string) => `hashed:${password}`),
-  };
-});
-
 /**
  * 清理 localStorage，避免测试间相互污染。
  */
@@ -50,7 +41,7 @@ describe("useUserStore", () => {
     expect(user.token).toBe("token-123");
     expect(localStorage.getItem("token")).toBe("token-123");
     expect(user.profile).toMatchObject({ id: 1, email: "a@b.com" });
-    expect(api.post).toHaveBeenCalledWith("/auth/login", { email: "a@b.com", password: "hashed:pw" });
+    expect(api.post).toHaveBeenCalledWith("/auth/login", { email: "a@b.com", password: "pw" });
     expect(api.get).toHaveBeenCalledWith("/auth/me");
   });
 
