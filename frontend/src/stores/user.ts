@@ -16,16 +16,33 @@ export const useUserStore = defineStore("user", {
   }),
   actions: {
     /**
-     * 校验当前页面是否处于 HTTPS 传输环境（本地开发环境除外）。
+     * 校验当前登录/注册/改密操作是否处于安全传输环境（本地开发环境除外）。
+     *
+     * - 浏览器环境：页面本身必须是 https
+     * - Electron 环境：页面可能是 file://，此时要求 API baseURL 必须是 https（或本地开发）
      */
     assertSecureTransport() {
       if (typeof window === "undefined") return;
-      const { protocol, hostname } = window.location;
-      const isLocal =
+      const location = window.location;
+      const { protocol, hostname } = location;
+      const isLocalHost =
         hostname === "localhost" ||
         hostname === "127.0.0.1" ||
-        hostname === "[::1]";
-      if (protocol !== "https:" && !isLocal) {
+        hostname === "[::1]" ||
+        hostname === "";
+
+      const apiBaseURL = (api.defaults.baseURL || "").toString();
+      const isApiHttps = apiBaseURL.startsWith("https://");
+      const isApiLocal =
+        apiBaseURL.startsWith("http://localhost") ||
+        apiBaseURL.startsWith("http://127.0.0.1") ||
+        apiBaseURL.startsWith("http://[::1]");
+
+      if (protocol === "https:" || isLocalHost) return;
+
+      if (protocol === "file:" && (isApiHttps || isApiLocal)) return;
+
+      if (protocol !== "https:" && !isLocalHost) {
         throw new Error("为保障账号安全，登录/注册/改密仅允许在 HTTPS 环境下进行");
       }
     },

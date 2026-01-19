@@ -1,6 +1,60 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, session } = require("electron");
 const path = require("path");
 
+/**
+ * 获取生产模式下要加载的 index.html 路径。
+ * - 打包后：前端静态资源会被拷贝到 process.resourcesPath/frontend-dist
+ * - 本地直接运行（无 dev server）：使用仓库内 ../frontend/dist
+ */
+function resolveRendererIndexHtml() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, "frontend-dist", "index.html");
+  }
+  return path.join(__dirname, "../frontend/dist/index.html");
+}
+
+/**
+ * 修正 file:// 渲染进程访问线上后端时的 Origin/Referer。
+ *
+ * 说明：
+ * - 本项目后端开启了基于 Origin 的 CSRF 校验；
+ * - Electron 生产模式常见是 file:// 页面，浏览器会发出 Origin: null；
+ * - 若线上环境配置了 CSRF_TRUSTED_ORIGINS（通常为 https://xmem.top），Origin: null 会被拒绝；
+ * - 这里对发往 xmem.top 的请求，在 Origin 为空或为 null 时补齐为 https://xmem.top。
+ */
+function configureOnlineBackendRequestHeaders() {
+  const trustedOrigin = "https://xmem.top";
+  const isTargetHost = (hostname) => hostname === "xmem.top" || hostname.endsWith(".xmem.top");
+
+  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    let hostname = "";
+    try {
+      hostname = new URL(details.url).hostname;
+    } catch {
+      callback({ requestHeaders: details.requestHeaders });
+      return;
+    }
+
+    if (!isTargetHost(hostname)) {
+      callback({ requestHeaders: details.requestHeaders });
+      return;
+    }
+
+    const headers = { ...details.requestHeaders };
+    const origin = headers.Origin ?? headers.origin;
+
+    if (origin === undefined || origin === null || origin === "" || origin === "null") {
+      headers.Origin = trustedOrigin;
+      headers.Referer = `${trustedOrigin}/`;
+    }
+
+    callback({ requestHeaders: headers });
+  });
+}
+
+/**
+ * 创建应用主窗口。
+ */
 function createWindow() {
   const win = new BrowserWindow({
     width: 1123,
@@ -26,7 +80,7 @@ function createWindow() {
       });
     });
   } else {
-    const distPath = path.join(__dirname, "../frontend/dist/index.html");
+    const distPath = resolveRendererIndexHtml();
     console.log("Loading production build:", distPath);
     win.loadFile(distPath).catch((err) => {
       console.error("Failed to load file:", err);
@@ -57,6 +111,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  configureOnlineBackendRequestHeaders();
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

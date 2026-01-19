@@ -17,18 +17,32 @@ api.interceptors.request.use((config) => {
   };
 
   /**
-   * 校验认证请求是否运行在 HTTPS 传输环境（本地开发环境除外）。
+   * 校验认证请求是否在安全传输下发送。
+   *
+   * - 浏览器环境：页面本身必须是 https（本地开发除外）
+   * - Electron 环境：页面可能是 file://，此时要求 API baseURL 必须是 https（本地开发除外）
    */
   const assertAuthRequestSecureTransport = () => {
     if (typeof window === "undefined") return;
-    const { protocol, hostname } = window.location;
-    const isLocal =
+    const location = window.location;
+    const { protocol, hostname } = location;
+
+    const isLocalHost =
       hostname === "localhost" ||
       hostname === "127.0.0.1" ||
-      hostname === "[::1]";
-    if (protocol !== "https:" && !isLocal) {
-      throw new Error("为保障账号安全，认证请求仅允许在 HTTPS 环境下发送");
+      hostname === "[::1]" ||
+      hostname === "";
+
+    const apiBaseURL = (config.baseURL || api.defaults.baseURL || "").toString();
+    const isApiHttps = apiBaseURL.startsWith("https://");
+
+    if (protocol === "https:" || isLocalHost) return;
+
+    if (protocol === "file:" && isApiHttps) {
+      return;
     }
+
+    throw new Error("为保障账号安全，认证请求仅允许在 HTTPS 环境下发送");
   };
 
   if (isAuthRequest(config.url)) {
@@ -71,4 +85,3 @@ api.interceptors.response.use(
 );
 
 export default api;
-
