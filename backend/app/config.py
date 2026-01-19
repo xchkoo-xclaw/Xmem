@@ -1,5 +1,26 @@
-from pydantic_settings import BaseSettings  # pyright: ignore[reportMissingImports]
+import os
+from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict  # pyright: ignore[reportMissingImports]
 from pydantic import Field  # pyright: ignore[reportMissingImports]
+
+
+def resolve_env_file() -> str | None:
+    """解析应加载的 .env 文件（支持 ENV_FILE 显式覆盖）。
+
+    约定：
+    - 本地开发默认使用 backend/.env.dev（如果存在）；
+    - 生产与 CI 建议通过环境变量/Secrets 注入，不依赖仓库内 env 文件。
+    """
+    explicit = os.getenv("ENV_FILE")
+    if explicit:
+        return explicit
+
+    for name in (".env.dev", ".env"):
+        if Path(name).exists():
+            return name
+
+    return None
 
 
 class Settings(BaseSettings):
@@ -16,7 +37,7 @@ class Settings(BaseSettings):
         env="CSRF_TRUSTED_ORIGINS",
     )
 
-    password_min_length: int = Field(default=10, env="PASSWORD_MIN_LENGTH")
+    password_min_length: int = Field(default=8, env="PASSWORD_MIN_LENGTH")
     password_max_length: int = Field(default=128, env="PASSWORD_MAX_LENGTH")
     password_require_upper: bool = Field(default=True, env="PASSWORD_REQUIRE_UPPER")
     password_require_lower: bool = Field(default=True, env="PASSWORD_REQUIRE_LOWER")
@@ -38,9 +59,8 @@ class Settings(BaseSettings):
     # 远程 LLM API 配置
     llm_api_url: str = Field(default="", env="LLM_API_URL")  # 远程 LLM API 地址
     llm_api_key: str = Field(default="", env="LLM_API_KEY")  # 远程 LLM API 密钥
-    class Config:
-        env_file = ".env"
+
+    model_config = SettingsConfigDict(env_file=resolve_env_file(), env_file_encoding="utf-8")
 
 
 settings = Settings()
-

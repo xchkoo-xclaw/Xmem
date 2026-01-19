@@ -31,7 +31,6 @@ const NoteCardContentStub = defineComponent({
 
 describe("NotesView", () => {
   beforeEach(() => {
-    vi.resetModules();
     vi.clearAllMocks();
     localStorage.clear();
   });
@@ -112,6 +111,9 @@ describe("NotesView", () => {
     vi.advanceTimersByTime(300);
     await flushPromises();
     expect(fetchSpy).toHaveBeenCalledWith();
+
+    wrapper.unmount();
+    vi.useRealTimers();
   });
 
   it("点击卡片会跳转详情，并能处理 copy/delete/pin 交互", async () => {

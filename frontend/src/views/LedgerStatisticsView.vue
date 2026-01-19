@@ -70,6 +70,16 @@
             <div class="h-80">
               <v-chart :option="categoryChartOption" autoresize />
             </div>
+            <div v-if="isNarrowScreen" class="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-gray-600">
+              <div
+                v-for="(item, index) in statistics.category_stats"
+                :key="item.category"
+                class="flex items-center gap-2"
+              >
+                <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ backgroundColor: getCategoryColor(index) }"></span>
+                <span class="max-w-32 truncate">{{ item.category }}</span>
+              </div>
+            </div>
           </div>
 
           <!-- 分类详情列表 -->
@@ -114,7 +124,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, PieChart } from "echarts/charts";
@@ -148,6 +158,12 @@ const emit = defineEmits<{
 const data = useDataStore();
 const statistics = ref<LedgerStatistics | null>(null);
 const loading = ref(true);
+const windowWidth = ref(typeof window !== "undefined" ? window.innerWidth : 1024);
+const isNarrowScreen = computed(() => windowWidth.value < 560);
+
+const handleResize = () => {
+  windowWidth.value = window.innerWidth;
+};
 
 // 月度图表配置
 const monthlyChartOption = computed(() => {
@@ -309,6 +325,7 @@ const categoryChartOption = computed(() => {
       }
     },
     legend: {
+      show: !isNarrowScreen.value,
       orient: 'vertical',
       left: 'left',
       top: 'middle',
@@ -320,7 +337,7 @@ const categoryChartOption = computed(() => {
       {
         type: 'pie',
         radius: ['40%', '70%'],
-        center: ['60%', '50%'],
+        center: isNarrowScreen.value ? ['50%', '50%'] : ['60%', '50%'],
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 8,
@@ -353,6 +370,11 @@ const getCategoryColor = (index: number) => {
 };
 
 onMounted(async () => {
+  if (typeof window !== "undefined") {
+    window.addEventListener("resize", handleResize);
+    windowWidth.value = window.innerWidth;
+  }
+
   loading.value = true;
   try {
     statistics.value = await data.fetchLedgerStatistics();
@@ -360,6 +382,12 @@ onMounted(async () => {
     console.error("获取统计数据失败:", error);
   } finally {
     loading.value = false;
+  }
+});
+
+onUnmounted(() => {
+  if (typeof window !== "undefined") {
+    window.removeEventListener("resize", handleResize);
   }
 });
 </script>

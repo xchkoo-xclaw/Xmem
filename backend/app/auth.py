@@ -47,14 +47,14 @@ def validate_password_strength(password: str) -> None:
         pw = password.strip()
         if len(pw) < settings.password_min_length:
             issues.append(f"密码长度至少 {settings.password_min_length} 位")
-        if settings.password_require_upper and not re.search(r"[A-Z]", pw):
-            issues.append("密码需包含大写字母")
-        if settings.password_require_lower and not re.search(r"[a-z]", pw):
-            issues.append("密码需包含小写字母")
-        if settings.password_require_digit and not re.search(r"\d", pw):
-            issues.append("密码需包含数字")
-        if settings.password_require_symbol and not re.search(r"[^A-Za-z0-9]", pw):
-            issues.append("密码需包含符号")
+        # if settings.password_require_upper and not re.search(r"[A-Z]", pw):
+        #     issues.append("密码需包含大写字母")
+        # if settings.password_require_lower and not re.search(r"[a-z]", pw):
+        #     issues.append("密码需包含小写字母")
+        # if settings.password_require_digit and not re.search(r"\d", pw):
+        #     issues.append("密码需包含数字")
+        # if settings.password_require_symbol and not re.search(r"[^A-Za-z0-9]", pw):
+        #     issues.append("密码需包含符号")
         if settings.password_max_length and len(pw) > settings.password_max_length:
             issues.append(f"密码长度不能超过 {settings.password_max_length} 位")
         if settings.password_disallow_whitespace and re.search(r"\s", password):

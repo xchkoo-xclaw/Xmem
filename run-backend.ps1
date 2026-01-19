@@ -21,14 +21,19 @@ Set-Location $backendPath
 Write-Host "工作目录: $(Get-Location)" -ForegroundColor Gray
 Write-Host ""
 
-# 检查环境变量文件
-$envFile = Join-Path $backendPath ".env"
+# 检查环境变量文件（优先使用 .env.dev）
+$preferredEnvFile = Join-Path $backendPath ".env.dev"
+$fallbackEnvFile = Join-Path $backendPath ".env"
+$envFile = if (Test-Path $preferredEnvFile) { $preferredEnvFile } else { $fallbackEnvFile }
+
 if (-not (Test-Path $envFile)) {
     Write-Host "警告: 未找到 .env 文件" -ForegroundColor Yellow
     Write-Host "请确保已设置以下环境变量:" -ForegroundColor Yellow
     Write-Host "  - DATABASE_URL" -ForegroundColor Yellow
     Write-Host "  - JWT_SECRET" -ForegroundColor Yellow
     Write-Host ""
+} else {
+    Import-DotEnvFile -Path $envFile
 }
 
 # 检查数据库连接（可选）
