@@ -43,7 +43,6 @@ const axiosMock = vi.hoisted(() => {
 });
 
 vi.mock("axios", () => ({ default: axiosMock, create: axiosMock.create }));
-vi.mock("../../src/router", () => ({ default: routerMock }));
 
 describe("api client", () => {
   beforeEach(() => {
@@ -51,6 +50,7 @@ describe("api client", () => {
     vi.clearAllMocks();
     localStorage.clear();
     routerMock.currentRoute.value = { name: "home", fullPath: "/" } as any;
+    (window as any).__xmemRouter = routerMock;
   });
 
   it("请求拦截器会在 token 存在时设置 Authorization", async () => {

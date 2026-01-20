@@ -23,5 +23,10 @@ app.config.errorHandler = (err) => {
 
   router.replace({ name: "server-error" });
 };
+
+/**
+ * 注入 router 实例给 api 客户端使用，避免 api -> router 的循环依赖。
+ */
+(window as any).__xmemRouter = router;
 app.use(createPinia());
 app.use(router).directive("secure-display", vSecureDisplay).mount("#app");

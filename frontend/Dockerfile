@@ -1,6 +1,5 @@
 # 多阶段构建：第一阶段 - 构建前端
-FROM node:20.18.0-alpine AS builder
-
+FROM node:20-bullseye AS builder
 # 锁定 npm 版本（Node.js 20.18.0 自带 npm 10.8.2，如需更新可单独安装）
 # RUN npm install -g npm@10.8.2
 
@@ -15,7 +14,6 @@ RUN npm ci
 
 # 复制源代码
 COPY . .
-
 # 构建前端（根据环境变量选择构建模式）
 ARG VITE_API_URL=/api
 ENV VITE_API_URL=${VITE_API_URL}

@@ -60,13 +60,22 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    /**
+     * 获取应用注入到 window 的 router 实例（用于避免 api -> router 的循环依赖）。
+     */
+    const getAppRouter = (): any => {
+      if (typeof window === "undefined") return null;
+      return (window as any).__xmemRouter || null;
+    };
+
     const status = error?.response?.status;
     if (status === 401 || status === 403) {
       localStorage.removeItem("token");
       if (!authRedirecting) {
         authRedirecting = true;
         try {
-          const { default: router } = await import("../router");
+          const router = getAppRouter();
+          if (!router) throw new Error("router not ready");
           const current = router.currentRoute.value;
           const isAuthRoute = current.name === "login" || current.name === "register";
           if (!isAuthRoute) {
