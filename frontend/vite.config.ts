@@ -18,6 +18,13 @@ const createLocalApiProxy = () => {
 export default defineConfig({
   plugins: [vue()],
   base: "./",
+  build: {
+    rollupOptions: {
+      output: {
+        inlineDynamicImports: true,
+      },
+    },
+  },
   server: {
     port: 5173,
     host: true,

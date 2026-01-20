@@ -11,7 +11,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - name: SSH deploy
@@ -23,5 +23,5 @@ jobs:
           script: |
             cd /home/xmem/Xmem
             git pull origin main
-            docker compose build
+            docker compose build --progress plain
             docker compose up -d

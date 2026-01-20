@@ -14,9 +14,11 @@ RUN npm ci
 
 # 复制源代码
 COPY . .
-# 构建前端（根据环境变量选择构建模式）
+
+ENV NODE_OPTIONS=--max_old_space_size=4096
 ARG VITE_API_URL=/api
 ENV VITE_API_URL=${VITE_API_URL}
+
 
 RUN npm run build
 
