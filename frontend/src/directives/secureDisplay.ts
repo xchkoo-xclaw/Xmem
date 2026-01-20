@@ -1,13 +1,15 @@
 import { replaceImagesWithSecureUrls } from "../utils/secureImages";
 import { handleSecureDownload, isSecureResource } from "../utils/secureDownload";
 
-// 防抖函数，避免在打字时频繁触发图片替换
-function debounce(fn: Function, delay: number) {
-  let timeoutId: any;
-  return function (...args: any[]) {
+function debounce<TArgs extends unknown[]>(
+  fn: (...args: TArgs) => void,
+  delay: number
+): (...args: TArgs) => void {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  return (...args: TArgs) => {
     if (timeoutId) clearTimeout(timeoutId);
     timeoutId = setTimeout(() => {
-      fn.apply(null, args);
+      fn(...args);
     }, delay);
   };
 }

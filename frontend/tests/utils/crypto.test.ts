@@ -6,7 +6,9 @@ describe("crypto/hashPassword", () => {
   });
 
   it("会调用 crypto.subtle.digest 并返回 hex 字符串", async () => {
-    const digest = vi.fn(async (_algo: string, _data: ArrayBuffer | ArrayBufferView) => {
+    const digest = vi.fn(async (algo: string, data: ArrayBuffer | ArrayBufferView) => {
+      expect(algo).toBe("SHA-256");
+      expect(data instanceof ArrayBuffer || ArrayBuffer.isView(data)).toBe(true);
       return new Uint8Array([0, 1, 2, 255]).buffer;
     });
 
@@ -21,7 +23,8 @@ describe("crypto/hashPassword", () => {
   });
 
   it("会把输入按 UTF-8 编码后参与 digest", async () => {
-    const digest = vi.fn(async (_algo: string, data: any) => {
+    const digest = vi.fn(async (algo: string, data: any) => {
+      expect(algo).toBe("SHA-256");
       const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : new Uint8Array(data.buffer);
       const decoded = new TextDecoder().decode(bytes);
       expect(decoded).toBe("你好");

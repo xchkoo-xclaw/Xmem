@@ -13,7 +13,6 @@
     --user-id: 可选，通过用户ID指定用户
     如果不指定用户，默认使用第一个用户
 """
-import asyncio
 import random
 import sys
 from datetime import datetime, timedelta, timezone
@@ -22,7 +21,7 @@ from pathlib import Path
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent))
 
-from sqlalchemy import create_engine, select, Column, Integer, String, Text, Float, DateTime, ForeignKey, JSON, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, Text, Float, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import Session, sessionmaker, declarative_base
 from app.config import settings
 from app.constants import LEDGER_CATEGORIES
@@ -288,8 +287,8 @@ def main():
         session.commit()
         
         print(f"成功生成 {count} 条记账数据！")
-        print(f"时间范围: 过去 180 天")
-        print(f"分类分布:")
+        print("时间范围: 过去 180 天")
+        print("分类分布:")
         category_counts = {}
         for entry in entries:
             category_counts[entry.category] = category_counts.get(entry.category, 0) + 1

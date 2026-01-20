@@ -8,9 +8,8 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from datetime import datetime, timezone
 
 from app.main import app
-from app import models
 from app.db import get_session
-from app.auth import get_current_user, verify_password, create_access_token
+from app.auth import get_current_user
 
 
 # ========== Fixtures ==========

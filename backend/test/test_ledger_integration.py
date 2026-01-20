@@ -3,9 +3,7 @@ Ledger 集成测试
 测试完整的端到端流程
 """
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-from datetime import datetime, timezone
-import io
+from unittest.mock import patch, MagicMock
 from PIL import Image
 
 from app import models
@@ -13,7 +11,6 @@ from app.tasks.ledger_tasks import (
     merge_text_and_analyze,
     update_ledger_entry
 )
-from app.tasks.ocr_tasks import extract_text_from_image_task
 
 
 # ========== 测试完整流程 ==========
@@ -282,14 +279,6 @@ class TestUserIsolation:
             id=1,
             user_id=1,
             raw_text="用户1的条目",
-            status="completed"
-        )
-        
-        # 用户2的 ledger
-        entry2 = models.LedgerEntry(
-            id=2,
-            user_id=2,
-            raw_text="用户2的条目",
             status="completed"
         )
         

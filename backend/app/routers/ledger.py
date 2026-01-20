@@ -5,14 +5,14 @@ import json
 import logging
 import datetime as dt
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, extract
+from sqlalchemy import select, func
 from celery import chain
 
 from .. import models, schemas
 from ..db import get_session
 from ..auth import get_current_user
 from ..tasks.ocr_tasks import extract_text_from_image_task
-from ..tasks.ledger_tasks import analyze_ledger_text, wrap_analyze_text_with_entry_id, merge_text_and_analyze, update_ledger_entry
+from ..tasks.ledger_tasks import wrap_analyze_text_with_entry_id, merge_text_and_analyze, update_ledger_entry
 from ..utils.file_utils import save_uploaded_img
 from ..utils.exchange_rate import get_exchange_rate_to_cny, convert_to_cny
 from ..constants import LEDGER_CATEGORIES
@@ -273,7 +273,6 @@ async def get_ledger_statistics(
     current_user: models.User = Depends(get_current_user),
 ):
     """获取记账统计数据（必须在 /{ledger_id} 之前定义，避免路由冲突）"""
-    from ..constants import LEDGER_CATEGORIES
     
     now = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
     

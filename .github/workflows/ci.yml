@@ -26,8 +26,12 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - run: npm ci
-      - run: node ./node_modules/typescript/bin/tsc -p tsconfig.json --noEmit
-      - run: npm run test:coverage
+      - name: Syntax check
+        run: node ./node_modules/typescript/bin/tsc -p tsconfig.json --noEmit
+      - name: Lint
+        run: npm run lint
+      - name: Tests
+        run: npm run test:coverage
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -81,8 +85,14 @@ jobs:
       - uses: astral-sh/setup-uv@v5
 
       - run: uv sync --frozen
-      - run: uv run python init_db.py
-      - run: uv run pytest -v
+      - name: Syntax check
+        run: uv run python -m compileall .
+      - name: Lint
+        run: uv run ruff check .
+      - name: Tests
+        run: |
+          uv run python init_db.py
+          uv run pytest -v
 
   ssh_check:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_ssh_check }}

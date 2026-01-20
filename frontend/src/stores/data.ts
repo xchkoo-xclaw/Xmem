@@ -384,13 +384,9 @@ export const useDataStore = defineStore("data", {
       });
     },
     async removeNote(id: number) {
-      try {
       await api.delete(`/notes/${id}`);
       this.notes = this.notes.filter((n) => n.id !== id);
-        return true;
-      } catch (error) {
-        throw error;
-      }
+      return true;
     },
     async updateNote(id: number, body_md: string) {
       const { data } = await api.patch(`/notes/${id}`, {
@@ -431,13 +427,9 @@ export const useDataStore = defineStore("data", {
       return data;
     },
     async removeLedger(id: number) {
-      try {
-        await api.delete(`/ledger/${id}`);
-        this.ledgers = this.ledgers.filter((l) => l.id !== id);
-        return true;
-      } catch (error) {
-        throw error;
-      }
+      await api.delete(`/ledger/${id}`);
+      this.ledgers = this.ledgers.filter((l) => l.id !== id);
+      return true;
     }
   }
 });

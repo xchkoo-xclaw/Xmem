@@ -285,15 +285,6 @@ class TestTodosUserIsolation:
         mock_user
     ):
         """测试用户无法访问其他用户的待办"""
-        # 用户1的待办
-        user1_todo = models.Todo(
-            id=1,
-            user_id=1,
-            title="用户1的待办",
-            completed=False,
-            created_at=datetime.now(timezone.utc).replace(tzinfo=None)
-        )
-        
         # 用户2尝试访问用户1的待办
         user2 = MagicMock()
         user2.id = 2
