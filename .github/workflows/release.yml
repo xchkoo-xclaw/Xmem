@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "frontend/v*"
+      - "backend/v*"
+      - "electron/v*"
+      - "xmem/v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  github_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compute release name
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          name="$tag"
+          case "$tag" in
+            frontend/*) name="frontend ${tag#frontend/}" ;;
+            backend/*) name="backend ${tag#backend/}" ;;
+            electron/*) name="electron ${tag#electron/}" ;;
+            xmem/*) name="xmem ${tag#xmem/}" ;;
+          esac
+          echo "RELEASE_NAME=$name" >> "$GITHUB_ENV"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ env.RELEASE_NAME }}
+          generate_release_notes: true
+          make_latest: false
