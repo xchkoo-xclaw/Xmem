@@ -19,6 +19,8 @@ jobs:
   github_release:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Compute release name
         shell: bash
         run: |
@@ -32,9 +34,70 @@ jobs:
           esac
           echo "RELEASE_NAME=$name" >> "$GITHUB_ENV"
 
-      - name: Create GitHub release
+      - name: Compute umbrella release body (xmem tag)
+        if: startsWith(github.ref_name, 'xmem/')
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import pathlib
+          import sys
+
+          root = pathlib.Path('.')
+
+          def read_json(path: pathlib.Path) -> str:
+              with path.open('r', encoding='utf-8') as f:
+                  return json.load(f).get('version', '').strip()
+
+          def read_backend_version(path: pathlib.Path) -> str:
+              try:
+                  import tomllib  # py>=3.11
+              except Exception:  # pragma: no cover
+                  import tomli as tomllib
+              with path.open('rb') as f:
+                  data = tomllib.load(f)
+              return (data.get('project') or {}).get('version', '').strip()
+
+          frontend_version = read_json(root / 'frontend' / 'package.json')
+          electron_version = read_json(root / 'electron' / 'package.json')
+          backend_version = read_backend_version(root / 'backend' / 'pyproject.toml')
+
+          tag = os.environ.get('GITHUB_REF_NAME', '').strip()
+
+          body = "\n".join([
+              f"总版本：{tag}",
+              "",
+              "组件版本：",
+              f"- frontend: v{frontend_version}",
+              f"- backend: v{backend_version}",
+              f"- electron: v{electron_version}",
+          ])
+
+          env_path = os.environ.get('GITHUB_ENV')
+          if not env_path:
+              print(body)
+              sys.exit(0)
+
+          with open(env_path, 'a', encoding='utf-8') as f:
+              f.write("RELEASE_BODY<<__EOF__\n")
+              f.write(body)
+              f.write("\n__EOF__\n")
+          PY
+
+      - name: Create GitHub release (component tag)
+        if: ${{ !startsWith(github.ref_name, 'xmem/') }}
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ env.RELEASE_NAME }}
+          generate_release_notes: true
+          make_latest: false
+
+      - name: Create GitHub release (xmem tag)
+        if: startsWith(github.ref_name, 'xmem/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ env.RELEASE_NAME }}
+          body: ${{ env.RELEASE_BODY }}
           generate_release_notes: true
           make_latest: false
