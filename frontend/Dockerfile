@@ -9,6 +9,7 @@ WORKDIR /app
 # 复制 package 文件
 COPY package.json package-lock.json ./
 
+RUN npm config set registry https://registry.npmmirror.com
 # 安装依赖（使用 npm ci 确保使用 package-lock.json 中的精确版本）
 RUN npm ci
 
