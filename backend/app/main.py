@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, Request
 import logging
 from fastapi.responses import JSONResponse
+from urllib.parse import urlsplit
 
 from .db import engine, Base
 from .routers import auth, notes, ledger, todos
@@ -25,11 +26,37 @@ def is_request_secure(request: Request) -> bool:
     return request.url.scheme.lower() == "https"
 
 
+def normalize_origin(value: str | None) -> str | None:
+    """规范化 Origin 值，避免因大小写、末尾斜杠等差异导致误判。"""
+    if value is None:
+        return None
+
+    raw = value.strip()
+    if not raw:
+        return None
+
+    if raw.lower() == "null":
+        return None
+
+    raw = raw.rstrip("/")
+
+    try:
+        parsed = urlsplit(raw)
+    except Exception:
+        return raw
+
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
+
+    return raw
+
+
 def get_csrf_trusted_origins() -> set[str]:
-    """解析 CSRF 可信 Origin 列表（逗号分隔）。"""
+    """解析 CSRF 可信 Origin 列表（逗号分隔，支持自动规范化）。"""
     raw = settings.csrf_trusted_origins or ""
     items = [x.strip() for x in raw.split(",")]
-    return {x for x in items if x}
+    normalized = (normalize_origin(x) for x in items)
+    return {x for x in normalized if x}
 
 
 @app.middleware("http")
@@ -38,7 +65,7 @@ async def security_middleware(request: Request, call_next):
     trusted = get_csrf_trusted_origins()
 
     if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
-        origin = request.headers.get("origin")
+        origin = normalize_origin(request.headers.get("origin"))
         if origin and trusted and origin not in trusted:
             return JSONResponse(status_code=403, content={"detail": "CSRF 校验失败：Origin 不受信任"})
 

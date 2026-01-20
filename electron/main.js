@@ -111,6 +111,9 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  if (process.platform === "win32") {
+    app.setAppUserModelId("com.xmem.desktop");
+  }
   configureOnlineBackendRequestHeaders();
   createWindow();
   app.on("activate", () => {
