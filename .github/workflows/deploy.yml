@@ -4,7 +4,14 @@ on:
   release:
     types: [published] 
 
-  workflow_dispatch:  
+  workflow_dispatch:
+    inputs:
+      ref:
+        type: string
+        default: ""
+      compose_build:
+        type: boolean
+        default: true
   # push:
   #   branches: [main]
 
@@ -13,9 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     if: >-
-      startsWith(github.event.release.tag_name, 'frontend/')
-      || startsWith(github.event.release.tag_name, 'backend/')
-      || startsWith(github.event.release.tag_name, 'xmem/')
+      github.event_name == 'workflow_dispatch'
+      || (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'xmem/'))
 
     steps:
       - name: SSH deploy
@@ -26,6 +32,16 @@ jobs:
           key: ${{ secrets.ALIYUN_SSH_KEY }}
           script: |
             cd /home/xmem/Xmem
-            git pull origin main
-            docker compose build --progress plain
+            ref="${{ github.event.inputs.ref }}"
+            run_build="${{ github.event.inputs.compose_build }}"
+            git fetch --all --tags
+            if [ -n "$ref" ]; then
+              git checkout --force "$ref"
+            else
+              git checkout --force main
+              git pull origin main
+            fi
+            if [ "$run_build" = "true" ]; then
+              docker compose build --progress plain
+            fi
             docker compose up -d
