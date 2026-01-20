@@ -7,6 +7,8 @@
     feature: 
         笔记分享功能
 
+    feature：
+        黑夜模式
     
 ### 重构：
     前端 后端 electron各自划分版本号

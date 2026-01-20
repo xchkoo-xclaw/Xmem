@@ -18,7 +18,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     if: >-
       github.event_name == 'workflow_dispatch'
       || (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'xmem/'))
@@ -30,6 +30,8 @@ jobs:
           host: ${{ secrets.ALIYUN_HOST }}
           username: ${{ secrets.ALIYUN_USER }}
           key: ${{ secrets.ALIYUN_SSH_KEY }}
+          timeout: 5m
+          command_timeout: 120m
           script: |
             cd /home/xmem/Xmem
             ref="${{ github.event.inputs.ref }}"
