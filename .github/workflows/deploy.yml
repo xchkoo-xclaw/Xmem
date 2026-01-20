@@ -2,8 +2,9 @@ name: Deploy to Aliyun
 
 on:
   release:
-    types: [published]   # 👈 只有发布 release 才触发
-  # 如果你想 push 就部署，也可以加：
+    types: [published] 
+
+  workflow_dispatch:  
   # push:
   #   branches: [main]
 
@@ -19,7 +20,7 @@ jobs:
           username: ${{ secrets.ALIYUN_USER }}
           key: ${{ secrets.ALIYUN_SSH_KEY }}
           script: |
-            cd xmem
+            cd /home/xmem/Xmem
             git pull origin main
             docker compose build --no-cache
             docker compose up -d
