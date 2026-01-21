@@ -12,8 +12,6 @@ from app.tasks.ledger_tasks import (
     update_ledger_entry
 )
 
-pytestmark = pytest.mark.tasks
-
 
 # ========== 测试完整流程 ==========
 
