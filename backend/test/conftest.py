@@ -1,7 +1,6 @@
 """
 Pytest 配置文件
 """
-import asyncio
 import pytest
 from pathlib import Path
 import os
@@ -24,6 +23,7 @@ TEST_IMG_DIR = Path(__file__).parent / "img"
 
 _POSTGRES_CONTAINER = None
 _TESTCONTAINERS_ENABLED = False
+_SYNC_ENGINE = None
 
 
 def _is_truthy_env(name: str) -> bool:
@@ -49,6 +49,7 @@ def pytest_addoption(parser):
 
 
 def _build_asyncpg_url(sync_url: str) -> str:
+    """将 PostgreSQL 容器连接串规范化为 asyncpg 连接串。"""
     if sync_url.startswith("postgresql+asyncpg://"):
         return sync_url
     if sync_url.startswith("postgresql://"):
@@ -56,16 +57,29 @@ def _build_asyncpg_url(sync_url: str) -> str:
     return sync_url
 
 
-async def _init_schema():
-    __import__("app.models")
-    from app.db import Base, engine
+def _build_psycopg2_url(url: str) -> str:
+    """将 PostgreSQL URL 规范化为 psycopg2 连接串（用于同步建表/清库）。"""
+    if url.startswith("postgresql+psycopg2://"):
+        return url
+    if url.startswith("postgresql+asyncpg://"):
+        return url.replace("+asyncpg", "+psycopg2", 1)
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg2://" + url.removeprefix("postgresql://")
+    return url
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+
+def _init_schema_sync():
+    """使用同步引擎建表，避免 pytest-asyncio 多事件循环导致 asyncpg 冲突。"""
+    __import__("app.models")
+    from app.db import Base
+
+    if _SYNC_ENGINE is None:
+        return
+    Base.metadata.create_all(bind=_SYNC_ENGINE)
 
 
 def pytest_configure(config):
-    global _POSTGRES_CONTAINER, _TESTCONTAINERS_ENABLED
+    global _POSTGRES_CONTAINER, _TESTCONTAINERS_ENABLED, _SYNC_ENGINE
 
     if config.getoption("--no-testcontainers"):
         if _is_ci():
@@ -89,7 +103,10 @@ def pytest_configure(config):
         os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
         os.environ.setdefault("ALLOW_INSECURE_HTTP", "true")
 
-        asyncio.run(_init_schema())
+        from sqlalchemy import create_engine
+        sync_url = _build_psycopg2_url(asyncpg_url)
+        _SYNC_ENGINE = create_engine(sync_url, pool_pre_ping=True)
+        _init_schema_sync()
         _TESTCONTAINERS_ENABLED = True
     except Exception as e:
         try:
@@ -98,15 +115,21 @@ def pytest_configure(config):
         finally:
             _POSTGRES_CONTAINER = None
             _TESTCONTAINERS_ENABLED = False
+            _SYNC_ENGINE = None
         if _is_ci():
             raise pytest.UsageError(f"CI 环境启动 PostgreSQL Testcontainers 失败：{e}") from e
 
 
 def pytest_sessionfinish(session, exitstatus):
-    global _POSTGRES_CONTAINER
+    global _POSTGRES_CONTAINER, _SYNC_ENGINE
     if _POSTGRES_CONTAINER is None:
         return
     try:
+        try:
+            if _SYNC_ENGINE is not None:
+                _SYNC_ENGINE.dispose()
+        finally:
+            _SYNC_ENGINE = None
         _POSTGRES_CONTAINER.stop()
     finally:
         _POSTGRES_CONTAINER = None
@@ -213,16 +236,19 @@ def setup_test_env(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-async def reset_db_between_tests():
-    if not _TESTCONTAINERS_ENABLED:
+def reset_db_between_tests():
+    """每个测试前清空数据库（同步 TRUNCATE，避免 asyncpg 并发/事件循环问题）。"""
+    if not _TESTCONTAINERS_ENABLED or _SYNC_ENGINE is None:
+        yield
         return
+
     __import__("app.models")
-    from app.db import Base, engine
+    from app.db import Base
 
     table_names = [t.name for t in Base.metadata.sorted_tables]
-    if not table_names:
-        return
+    if table_names:
+        quoted = ", ".join(f"\"{name}\"" for name in table_names)
+        with _SYNC_ENGINE.begin() as conn:
+            conn.exec_driver_sql(f"TRUNCATE TABLE {quoted} RESTART IDENTITY CASCADE")
 
-    quoted = ", ".join(f"\"{name}\"" for name in table_names)
-    async with engine.begin() as conn:
-        await conn.exec_driver_sql(f"TRUNCATE TABLE {quoted} RESTART IDENTITY CASCADE")
+    yield
