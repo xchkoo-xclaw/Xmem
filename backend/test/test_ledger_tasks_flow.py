@@ -1,7 +1,7 @@
 """
-Ledger 集成测试
-测试完整的端到端流程
+Ledger 任务流程测试（使用 Mock 隔离外部依赖）。
 """
+
 import pytest
 from unittest.mock import patch, MagicMock
 from PIL import Image
@@ -12,11 +12,13 @@ from app.tasks.ledger_tasks import (
     update_ledger_entry
 )
 
+pytestmark = pytest.mark.tasks
+
 
 # ========== 测试完整流程 ==========
 
-class TestLedgerIntegration:
-    """测试 Ledger 完整流程"""
+class TestLedgerTasksFlow:
+    """测试 Ledger 任务的完整流程（Mock 版本）。"""
     
     @patch('app.tasks.ledger_tasks.analyze_ledger_text')
     @patch('app.tasks.ledger_tasks.SyncSessionLocal')
@@ -284,6 +286,7 @@ class TestUserIsolation:
         
         # Mock 查询 - 只返回用户1的条目
         def mock_query(model):
+            """构造仅返回当前用户条目的 query mock。"""
             query = MagicMock()
             if model == models.LedgerEntry:
                 filter_mock = MagicMock()
