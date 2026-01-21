@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from .config import settings
-from . import models, schemas
+from . import models
 from .db import get_session
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")

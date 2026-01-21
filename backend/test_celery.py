@@ -19,7 +19,7 @@ def test_celery():
     print("1. 测试连接任务...")
     try:
         result = test_connection.delay()
-        print(f"   ✓ 任务已提交")
+        print("   ✓ 任务已提交")
         print(f"   任务 ID: {result.id}")
         print(f"   初始状态: {result.state}")
         print()
@@ -65,7 +65,7 @@ def test_celery():
     try:
         test_message = "测试消息 - Celery 工作正常！"
         result2 = test_echo.delay(test_message)
-        print(f"   ✓ 任务已提交")
+        print("   ✓ 任务已提交")
         print(f"   任务 ID: {result2.id}")
         print("   正在等待结果...")
         

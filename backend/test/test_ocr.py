@@ -3,8 +3,7 @@ OCR 服务测试
 """
 import pytest
 from pathlib import Path
-import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # 导入 OCR 服务
 from app.services.ocr import (

@@ -273,7 +273,7 @@ def analyze_ledger_text(text: str) -> dict:
                     },
                 }
 
-                logger.info(f"LLM 分析任务完成")
+                logger.info("LLM 分析任务完成")
                 return result
             except Exception as api_error:
                 # API 调用失败（认证失败、网络错误、JSON 解析失败等），返回默认结果

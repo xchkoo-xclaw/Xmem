@@ -6,7 +6,6 @@ import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock, AsyncMock
 from datetime import datetime, timezone
-import io
 
 from app.main import app
 from app import models
@@ -373,16 +372,6 @@ class TestNotesUserIsolation:
         mock_user
     ):
         """测试用户无法访问其他用户的笔记"""
-        # 用户1的笔记
-        user1_note = models.Note(
-            id=1,
-            user_id=1,
-            body_md="用户1的笔记",
-            is_pinned=False,
-            created_at=datetime.now(timezone.utc).replace(tzinfo=None),
-            updated_at=datetime.now(timezone.utc).replace(tzinfo=None)
-        )
-        
         # 用户2尝试访问用户1的笔记
         user2 = MagicMock()
         user2.id = 2

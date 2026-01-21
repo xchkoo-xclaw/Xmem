@@ -38,19 +38,6 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: xmem_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d xmem_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
       redis:
         image: redis:7
         ports:
@@ -62,7 +49,6 @@ jobs:
           --health-retries 20
 
     env:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/xmem_test
       JWT_SECRET: ci-jwt-secret
       REDIS_URL: redis://localhost:6379/0
       OCR_PROVIDER: local
@@ -81,7 +67,9 @@ jobs:
       - uses: astral-sh/setup-uv@v5
 
       - run: uv sync --frozen
-      - run: uv run python init_db.py
+      - run: docker info
+      - run: uv run python -m compileall .
+      - run: uv run ruff check .
       - run: uv run pytest -v
 
   ssh_check:

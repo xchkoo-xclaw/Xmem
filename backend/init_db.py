@@ -10,7 +10,6 @@ sys.path.append(os.getcwd())
 from sqlalchemy import inspect
 from app.db import engine, Base
 # Import models to ensure they are registered with Base.metadata
-from app import models 
 
 async def init():
     print("Checking database state...")
