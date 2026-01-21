@@ -2,7 +2,6 @@
 Pytest 配置文件
 """
 import asyncio
-import asyncio
 import pytest
 from pathlib import Path
 import os
@@ -69,11 +68,15 @@ def pytest_configure(config):
     global _POSTGRES_CONTAINER, _TESTCONTAINERS_ENABLED
 
     if config.getoption("--no-testcontainers"):
+        if _is_ci():
+            raise pytest.UsageError("CI 环境不允许禁用 PostgreSQL Testcontainers（--no-testcontainers）。")
         return
 
     try:
         from testcontainers.postgres import PostgresContainer
-    except Exception:
+    except Exception as e:
+        if _is_ci():
+            raise pytest.UsageError(f"CI 环境需要 PostgreSQL Testcontainers，但 testcontainers 不可用：{e}") from e
         return
 
     try:
@@ -88,13 +91,15 @@ def pytest_configure(config):
 
         asyncio.run(_init_schema())
         _TESTCONTAINERS_ENABLED = True
-    except Exception:
+    except Exception as e:
         try:
             if _POSTGRES_CONTAINER is not None:
                 _POSTGRES_CONTAINER.stop()
         finally:
             _POSTGRES_CONTAINER = None
             _TESTCONTAINERS_ENABLED = False
+        if _is_ci():
+            raise pytest.UsageError(f"CI 环境启动 PostgreSQL Testcontainers 失败：{e}") from e
 
 
 def pytest_sessionfinish(session, exitstatus):

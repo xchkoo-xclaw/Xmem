@@ -2,8 +2,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.db import get_session
-from app.auth import get_current_user
+
+pytestmark = pytest.mark.integration
 
 
 @pytest.fixture
