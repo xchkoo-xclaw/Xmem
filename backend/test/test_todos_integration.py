@@ -9,7 +9,8 @@ pytestmark = pytest.mark.integration
 @pytest.fixture
 def client():
     """创建 FastAPI 测试客户端。"""
-    return TestClient(app)
+    with TestClient(app) as c:
+        yield c
 
 
 def _register(client: TestClient, *, email: str, password: str) -> None:
@@ -68,4 +69,3 @@ class TestTodosIntegration:
         delete = client.delete(f"/todos/{todo['id']}", headers=headers2)
         assert delete.status_code == 200
         assert delete.json()["ok"] is True
-

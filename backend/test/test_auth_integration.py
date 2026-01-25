@@ -8,7 +8,9 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    """创建并在用例结束后正确关闭 TestClient。"""
+    with TestClient(app) as c:
+        yield c
 
 
 def _register(client: TestClient, *, email: str, password: str, user_name: str | None = None) -> dict:

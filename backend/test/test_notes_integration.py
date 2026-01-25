@@ -11,7 +11,8 @@ pytestmark = pytest.mark.integration
 @pytest.fixture
 def client():
     """创建 FastAPI 测试客户端。"""
-    return TestClient(app)
+    with TestClient(app) as c:
+        yield c
 
 
 def _register(client: TestClient, *, email: str, password: str) -> dict:
@@ -140,4 +141,3 @@ class TestNotesIntegration:
         assert create.status_code == 200, create.text
         note = create.json()
         assert image_url in (note.get("images") or [])
-

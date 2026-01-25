@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine  # pyright: ignore[reportMissingImports]
 from sqlalchemy.orm import declarative_base  # pyright: ignore[reportMissingImports]
+from sqlalchemy.pool import NullPool  # pyright: ignore[reportMissingImports]
 
 from .config import settings
 
@@ -17,7 +18,15 @@ def ensure_async_database_url(database_url: str) -> str:
     return database_url
 
 
-engine = create_async_engine(ensure_async_database_url(settings.database_url), echo=False, future=True)
+if settings.app_env == "test":
+    engine = create_async_engine(
+        ensure_async_database_url(settings.database_url),
+        echo=False,
+        future=True,
+        poolclass=NullPool,
+    )
+else:
+    engine = create_async_engine(ensure_async_database_url(settings.database_url), echo=False, future=True)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 Base = declarative_base()
 

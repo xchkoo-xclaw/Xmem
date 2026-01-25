@@ -17,6 +17,7 @@ sys.path.insert(0, str(backend_dir))
 # 允许不显式设置时也能跑测试（CI / Testcontainers 会覆盖）
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
 os.environ.setdefault("OCR_PROVIDER", "local")
+os.environ.setdefault("APP_ENV", "test")
 
 # 测试图片目录
 TEST_IMG_DIR = Path(__file__).parent / "img"
