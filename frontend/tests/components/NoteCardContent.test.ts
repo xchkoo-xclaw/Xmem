@@ -35,15 +35,16 @@ const createNote = (overrides: Partial<Note> = {}): Note => {
  */
 const installResizeObserverMock = () => {
   const original = window.ResizeObserver;
-  let lastInstance: any | null = null;
 
   class MockResizeObserver {
+    static lastInstance: MockResizeObserver | null = null;
+
     private readonly cb: any;
     private target: Element | null = null;
 
     constructor(cb: any) {
       this.cb = cb;
-      lastInstance = this;
+      MockResizeObserver.lastInstance = this;
     }
 
     observe(target: Element) {
@@ -67,7 +68,7 @@ const installResizeObserverMock = () => {
   (window as any).ResizeObserver = MockResizeObserver;
 
   return {
-    getLastInstance: () => lastInstance as InstanceType<typeof MockResizeObserver> | null,
+    getLastInstance: () => MockResizeObserver.lastInstance as InstanceType<typeof MockResizeObserver> | null,
     restore: () => {
       window.ResizeObserver = original;
     },

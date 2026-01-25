@@ -3,8 +3,6 @@
 快速检查 Celery 和 Redis 配置
 """
 
-import sys
-import os
 
 def check_redis():
     """检查 Redis 连接"""

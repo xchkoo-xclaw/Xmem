@@ -14,8 +14,141 @@ from PIL import Image
 backend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_dir))
 
+# 允许不显式设置时也能跑测试（CI / Testcontainers 会覆盖）
+os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
+os.environ.setdefault("OCR_PROVIDER", "local")
+os.environ.setdefault("APP_ENV", "test")
+
 # 测试图片目录
 TEST_IMG_DIR = Path(__file__).parent / "img"
+
+_POSTGRES_CONTAINER = None
+_TESTCONTAINERS_ENABLED = False
+_SYNC_ENGINE = None
+
+
+def _is_truthy_env(name: str) -> bool:
+    """判断环境变量是否为真值（1/true/yes/on）。"""
+    value = os.getenv(name)
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _is_ci() -> bool:
+    """判断是否运行在 CI 环境（兼容 GitHub Actions）。"""
+    return _is_truthy_env("CI") or _is_truthy_env("GITHUB_ACTIONS")
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--no-testcontainers",
+        action="store_true",
+        default=False,
+        help="Disable Postgres testcontainers for integration tests.",
+    )
+
+
+def _build_asyncpg_url(sync_url: str) -> str:
+    """将 PostgreSQL 容器连接串规范化为 asyncpg 连接串。"""
+    if sync_url.startswith("postgresql+asyncpg://"):
+        return sync_url
+    if sync_url.startswith("postgresql://"):
+        return "postgresql+asyncpg://" + sync_url.removeprefix("postgresql://")
+    return sync_url
+
+
+def _build_psycopg2_url(url: str) -> str:
+    """将 PostgreSQL URL 规范化为 psycopg2 连接串（用于同步建表/清库）。"""
+    if url.startswith("postgresql+psycopg2://"):
+        return url
+    if url.startswith("postgresql+asyncpg://"):
+        return url.replace("+asyncpg", "+psycopg2", 1)
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg2://" + url.removeprefix("postgresql://")
+    return url
+
+
+def _init_schema_sync():
+    """使用同步引擎建表，避免 pytest-asyncio 多事件循环导致 asyncpg 冲突。"""
+    __import__("app.models")
+    from app.db import Base
+
+    if _SYNC_ENGINE is None:
+        return
+    Base.metadata.create_all(bind=_SYNC_ENGINE)
+
+
+def pytest_configure(config):
+    global _POSTGRES_CONTAINER, _TESTCONTAINERS_ENABLED, _SYNC_ENGINE
+
+    if config.getoption("--no-testcontainers"):
+        if _is_ci():
+            raise pytest.UsageError("CI 环境不允许禁用 PostgreSQL Testcontainers（--no-testcontainers）。")
+        return
+
+    try:
+        from testcontainers.postgres import PostgresContainer
+    except Exception as e:
+        if _is_ci():
+            raise pytest.UsageError(f"CI 环境需要 PostgreSQL Testcontainers，但 testcontainers 不可用：{e}") from e
+        return
+
+    try:
+        container = PostgresContainer("postgres:16")
+        container.start()
+        _POSTGRES_CONTAINER = container
+
+        asyncpg_url = _build_asyncpg_url(container.get_connection_url())
+        os.environ["DATABASE_URL"] = asyncpg_url
+        os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+        os.environ.setdefault("ALLOW_INSECURE_HTTP", "true")
+
+        from sqlalchemy import create_engine
+        sync_url = _build_psycopg2_url(asyncpg_url)
+        _SYNC_ENGINE = create_engine(sync_url, pool_pre_ping=True)
+        _init_schema_sync()
+        _TESTCONTAINERS_ENABLED = True
+    except Exception as e:
+        try:
+            if _POSTGRES_CONTAINER is not None:
+                _POSTGRES_CONTAINER.stop()
+        finally:
+            _POSTGRES_CONTAINER = None
+            _TESTCONTAINERS_ENABLED = False
+            _SYNC_ENGINE = None
+        if _is_ci():
+            raise pytest.UsageError(f"CI 环境启动 PostgreSQL Testcontainers 失败：{e}") from e
+
+
+def pytest_sessionfinish(session, exitstatus):
+    global _POSTGRES_CONTAINER, _SYNC_ENGINE
+    if _POSTGRES_CONTAINER is None:
+        return
+    try:
+        try:
+            if _SYNC_ENGINE is not None:
+                _SYNC_ENGINE.dispose()
+        finally:
+            _SYNC_ENGINE = None
+        _POSTGRES_CONTAINER.stop()
+    finally:
+        _POSTGRES_CONTAINER = None
+
+
+def pytest_collection_modifyitems(config, items):
+    if _TESTCONTAINERS_ENABLED:
+        return
+    if config.getoption("--no-testcontainers"):
+        return
+    if _is_ci() and any("integration" in item.keywords for item in items):
+        raise pytest.UsageError(
+            "CI 环境检测到 integration 测试，但 PostgreSQL Testcontainers 未启用/不可用；请确保 Docker 可用并允许测试拉起容器。"
+        )
+    skip_integration = pytest.mark.skip(reason="PostgreSQL testcontainers not available")
+    for item in items:
+        if "integration" in item.keywords:
+            item.add_marker(skip_integration)
 
 
 @pytest.fixture
@@ -101,3 +234,22 @@ def setup_test_env(monkeypatch):
     if not os.getenv("TESSERACT_CMD"):
         # 不设置，让代码使用系统默认路径
         pass
+
+
+@pytest.fixture(autouse=True)
+def reset_db_between_tests():
+    """每个测试前清空数据库（同步 TRUNCATE，避免 asyncpg 并发/事件循环问题）。"""
+    if not _TESTCONTAINERS_ENABLED or _SYNC_ENGINE is None:
+        yield
+        return
+
+    __import__("app.models")
+    from app.db import Base
+
+    table_names = [t.name for t in Base.metadata.sorted_tables]
+    if table_names:
+        quoted = ", ".join(f"\"{name}\"" for name in table_names)
+        with _SYNC_ENGINE.begin() as conn:
+            conn.exec_driver_sql(f"TRUNCATE TABLE {quoted} RESTART IDENTITY CASCADE")
+
+    yield

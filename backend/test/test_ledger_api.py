@@ -3,10 +3,7 @@ Ledger API 路由测试
 """
 import pytest
 from fastapi.testclient import TestClient
-from fastapi import Depends
 from unittest.mock import patch, MagicMock, AsyncMock
-from pathlib import Path
-import io
 from datetime import datetime, timezone
 
 from app.main import app
@@ -54,15 +51,6 @@ class TestCreateLedger:
         
         async def override_get_session():
             mock_session = AsyncMock()
-            # 创建完整的 entry 对象
-            new_entry = models.LedgerEntry(
-                id=1,
-                user_id=1,
-                raw_text="测试文本",
-                status="pending",
-                currency="CNY",
-                created_at=datetime.now(timezone.utc).replace(tzinfo=None)
-            )
             
             # Mock 数据库操作
             mock_session.add = MagicMock()

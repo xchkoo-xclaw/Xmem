@@ -6,7 +6,6 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock, AsyncMock
 from datetime import datetime, timezone
 import io
-from pathlib import Path
 
 from app.main import app
 from app import models

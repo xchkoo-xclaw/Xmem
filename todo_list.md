@@ -9,6 +9,9 @@
 
     feature：
         黑夜模式
+
+    bug:
+        访问https://xmem.top/会跳转到https://xmem.top/login?redirect=/并且卡在加载动画 访问https://xmem.top/login就不会卡住 并且加载动画还是紫色风格 没有改成和项目一直的风格
     
 ### 重构：
     前端 后端 electron各自划分版本号

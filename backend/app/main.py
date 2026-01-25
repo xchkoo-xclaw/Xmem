@@ -88,6 +88,8 @@ async def security_middleware(request: Request, call_next):
 @app.on_event("startup")
 async def on_startup():
     """启动时确保数据库表结构存在。"""
+    if settings.app_env == "test":
+        return
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)

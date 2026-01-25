@@ -1,4 +1,5 @@
 from celery import Celery
+from celery.schedules import crontab
 from .config import settings
 
 # 创建 Celery 应用
@@ -25,8 +26,6 @@ celery_app.conf.update(
     # 修复弃用警告：设置 broker_connection_retry_on_startup
     broker_connection_retry_on_startup=True,
 )
-
-from celery.schedules import crontab
 
 celery_app.conf.beat_schedule = {
     "cleanup-orphan-files-every-hour": {

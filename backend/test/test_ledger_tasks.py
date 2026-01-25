@@ -2,8 +2,7 @@
 Ledger Celery 任务测试
 """
 import pytest
-from unittest.mock import patch, MagicMock, Mock
-from datetime import datetime, timezone
+from unittest.mock import patch, MagicMock
 
 from app.tasks.ledger_tasks import (
     merge_text_and_analyze,
