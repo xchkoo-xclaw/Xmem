@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-primary text-gray-900">
+  <div class="min-h-screen bg-bg text-text">
     <header class="w-full max-w-4xl mx-auto px-4 pt-8 pb-4 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <button
@@ -25,7 +25,7 @@
     </header>
 
     <main class="w-full max-w-4xl mx-auto px-4 pb-20">
-      <div class="bg-white rounded-3xl shadow-float p-6 md:p-8">
+      <div class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
         <!-- 搜索框 -->
         <div class="mb-6">
           <div class="relative">
@@ -34,13 +34,13 @@
               @input="handleSearch"
               type="text"
               placeholder="搜索笔记..."
-              class="w-full rounded-xl border border-gray-200 bg-white !pl-11 pr-10 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900 transition-shadow shadow-sm"
+              class="w-full rounded-xl border border-border bg-surface !pl-11 pr-10 py-3 text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 transition-shadow shadow-sm"
             />
             <!-- 搜索图标（始终显示） -->
             <div class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 text-gray-400"
+                class="h-5 w-5 text-muted"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -52,7 +52,7 @@
             <button
               v-if="searchQuery"
               @click="clearSearch"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -62,7 +62,7 @@
         </div>
 
         <!-- 搜索状态提示 -->
-        <div v-if="isSearching" class="mb-4 text-center text-gray-500 text-sm">
+        <div v-if="isSearching" class="mb-4 text-center text-muted text-sm">
           搜索中...
         </div>
 
@@ -72,7 +72,7 @@
           <div
             v-for="note in data.notes"
             :key="note.id"
-            class="card relative group hover:shadow-lg transition-all duration-200 cursor-pointer"
+            class="card relative group hover:shadow-float transition-all duration-200 cursor-pointer"
             @click="handleNoteClick(note.id)"
           >
             <NoteCardContent
@@ -86,8 +86,8 @@
         </div>
         </div>
         <div v-else-if="!isSearching" class="text-center py-12">
-          <p class="text-gray-400 text-lg">{{ searchQuery ? '没有找到匹配的笔记' : '还没有笔记' }}</p>
-          <p v-if="!searchQuery" class="text-gray-400 text-sm mt-2">在上方输入框中添加你的第一条笔记吧</p>
+          <p class="text-muted text-lg">{{ searchQuery ? '没有找到匹配的笔记' : '还没有笔记' }}</p>
+          <p v-if="!searchQuery" class="text-muted text-sm mt-2">在上方输入框中添加你的第一条笔记吧</p>
         </div>
       </div>
     </main>
@@ -207,19 +207,19 @@ const handlePinNote = async (noteId: number) => {
 
 <style scoped>
 .input {
-  @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900 transition-shadow shadow-sm;
+  @apply w-full rounded-xl border border-border bg-surface px-4 py-3 text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 transition-shadow shadow-sm;
 }
 .btn {
   @apply px-4 py-2 rounded-xl font-semibold transition-all duration-150;
 }
 .btn.primary {
-  @apply bg-gray-900 text-white shadow-float active:scale-95;
+  @apply bg-accent text-on-accent shadow-float active:scale-95;
 }
 .btn.ghost {
-  @apply bg-white text-gray-700 border border-gray-200 hover:border-gray-300;
+  @apply bg-surface text-text border border-border hover:border-border/70;
 }
 .card {
-  @apply bg-white p-4 rounded-xl shadow;
+  @apply bg-surface p-4 rounded-xl shadow-card border border-border;
 }
 
 /* 网格布局 */

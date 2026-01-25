@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-primary text-gray-900">
+  <div class="min-h-screen bg-bg text-text">
     <header class="w-full max-w-4xl mx-auto px-4 pt-8 pb-4 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <button
@@ -25,15 +25,15 @@
     </header>
 
     <main class="w-full max-w-4xl mx-auto px-4 pb-20">
-      <div v-if="note" class="bg-white rounded-3xl shadow-float p-4 md:p-6 lg:p-8 mx-auto">
+      <div v-if="note" class="bg-surface border border-border rounded-3xl shadow-card p-4 md:p-6 lg:p-8 mx-auto">
         <!-- 笔记内容 -->
         <div class="mb-6" @dblclick="router.push({ name: 'editor', params: { noteId: props.noteId } })">
-           <MdPreview v-secure-display :modelValue="note.body_md || ''" />
+           <MdPreview v-secure-display :modelValue="note.body_md || ''" :theme="theme.resolvedTheme" />
         </div>
 
         <!-- 笔记信息 -->
-        <div class="border-t pt-4 flex items-center justify-between">
-          <div class="text-xs text-gray-400">
+        <div class="border-t border-border pt-4 flex items-center justify-between">
+          <div class="text-xs text-muted">
             创建时间：{{ formatTime(note.created_at) }}
           </div>
           <div class="flex items-center gap-2">
@@ -62,8 +62,8 @@
           </div>
         </div>
       </div>
-      <div v-else class="bg-white rounded-3xl shadow-float p-4 md:p-6 lg:p-8 mx-auto text-center">
-        <p class="text-gray-400 text-lg">笔记不存在</p>
+      <div v-else class="bg-surface border border-border rounded-3xl shadow-card p-4 md:p-6 lg:p-8 mx-auto text-center">
+        <p class="text-muted text-lg">笔记不存在</p>
       </div>
     </main>
     
@@ -89,6 +89,7 @@ import { useDataStore } from "../stores/data";
 import { useToastStore } from "../stores/toast";
 import { useConfirmStore } from "../stores/confirm";
 import { usePreferencesStore } from "../stores/preferences";
+import { useThemeStore } from "../stores/theme";
 import ConfirmDialog from "../components/ConfirmDialog.vue";
 import { useRouter } from "vue-router";
 import { toPlainTextFromMarkdown } from "../utils/markdown";
@@ -112,6 +113,7 @@ const data = useDataStore();
 const toast = useToastStore();
 const confirm = useConfirmStore();
 const preferences = usePreferencesStore();
+const theme = useThemeStore();
 
 const note = computed(() => {
   if (!props.noteId) return null;
@@ -181,9 +183,9 @@ const handleDelete = () => {
   @apply px-4 py-2 rounded-xl font-semibold transition-all duration-150;
 }
 .btn.primary {
-  @apply bg-gray-900 text-white shadow-float active:scale-95;
+  @apply bg-accent text-on-accent shadow-float active:scale-95;
 }
 .btn.ghost {
-  @apply bg-white text-gray-700 border border-gray-200 hover:border-gray-300;
+  @apply bg-surface text-text border border-border hover:border-border/70;
 }
 </style>

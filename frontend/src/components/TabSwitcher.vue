@@ -1,11 +1,11 @@
 <template>
-  <div class="inline-flex bg-white rounded-full p-1 shadow-float w-fit">
+  <div class="inline-flex bg-surface rounded-full p-1 shadow-float w-fit border border-border">
     <button
       v-for="tab in tabs"
       :key="tab.value"
       :class="[
         'px-3 md:px-4 py-2 text-sm font-semibold rounded-full transition-all duration-200 whitespace-nowrap',
-        modelValue === tab.value ? 'bg-gray-900 text-white shadow' : 'text-gray-500 hover:text-gray-800'
+        modelValue === tab.value ? 'bg-accent text-on-accent shadow' : 'text-muted hover:text-text'
       ]"
       @click="$emit('update:modelValue', tab.value)"
     >

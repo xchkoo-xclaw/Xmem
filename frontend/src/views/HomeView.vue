@@ -1,17 +1,17 @@
 <template>
-  <div class="home-view min-h-screen bg-primary text-gray-900 flex flex-col items-center">
+  <div class="home-view min-h-screen bg-bg text-text flex flex-col items-center">
     <header class="w-full max-w-4xl px-4 pt-8 pb-4 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <div class="text-xl font-bold leading-none">Xmem</div>
       </div>
       <div class="flex items-center gap-3 text-sm">
-        <span class="text-gray-600">{{ getGreeting() }}，{{ user.profile?.user_name || user.profile?.email }}</span>
+        <span class="text-muted">{{ getGreeting() }}，{{ user.profile?.user_name || user.profile?.email }}</span>
         <button class="btn ghost" @click="handleLogout">登出</button>
       </div>
     </header>
 
     <main class="w-full max-w-4xl px-4 pb-20">
-      <div class="bg-white rounded-3xl shadow-float p-4 md:p-6 lg:p-8 mx-auto">
+      <div class="bg-surface border border-border rounded-3xl shadow-card p-4 md:p-6 lg:p-8 mx-auto">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div class="w-fit">
             <TabSwitcher v-model="currentTab" :tabs="tabs" />
@@ -19,8 +19,8 @@
         </div>
 
         <div class="space-y-6">
-          <div class="bg-primary rounded-2xl p-4 md:p-6 shadow-inner">
-            <label class="block text-gray-600 text-sm mb-2">快速输入</label>
+          <div class="bg-primary rounded-2xl p-4 md:p-6 shadow-inset">
+            <label class="block text-muted text-sm mb-2">快速输入</label>
             <textarea
               v-model="inputText"
               class="input h-32 md:h-40"
@@ -80,11 +80,11 @@
               </div>
             </div>
             <!-- 记账模式下显示待提交的图片预览 -->
-            <div v-if="currentTab === 'ledger' && pendingLedgerImage" class="mt-3 flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+            <div v-if="currentTab === 'ledger' && pendingLedgerImage" class="mt-3 flex items-center gap-3 p-3 bg-surface2 rounded-lg border border-border">
               <img :src="pendingLedgerImagePreview" alt="待提交图片" class="w-20 h-20 object-cover rounded" />
               <div class="flex-1">
-                <div class="text-sm text-gray-600">已选择图片，等待提交</div>
-                <div class="text-xs text-gray-400 mt-1">可以在上方输入框中添加备注</div>
+                <div class="text-sm text-muted">已选择图片，等待提交</div>
+                <div class="text-xs text-muted mt-1">可以在上方输入框中添加备注</div>
               </div>
               <button class="btn ghost text-sm" @click="clearPendingImage">移除</button>
             </div>
@@ -98,7 +98,7 @@
               <div class="flex items-center gap-3">
                 <router-link
                   :to="{ name: 'notes' }"
-                  class="text-sm text-gray-600 hover:text-gray-900 underline"
+                  class="text-sm text-muted hover:text-text underline"
                 >
                   查看全部 →
                 </router-link>
@@ -108,7 +108,7 @@
               <div
                 v-for="note in displayedNotes"
                 :key="note.id"
-                class="card relative group hover:shadow-lg transition-all duration-200 cursor-pointer"
+                class="card relative group hover:shadow-float transition-all duration-200 cursor-pointer"
                 @click="handleNoteClick(note.id)"
               >
                 <NoteCardContent
@@ -127,7 +127,7 @@
                 <div class="text-center">
                   <div class="text-4xl font-light text-gray-400 mb-2">⋯</div>
                   <div class="text-sm text-gray-600 font-medium">
-                    还有 <span class="text-gray-900 font-semibold">{{ remainingNotesCount }}</span> 条笔记
+                    还有 <span class="text-text font-semibold">{{ remainingNotesCount }}</span> 条笔记
                   </div>
                   <div class="text-xs text-gray-500 mt-1">点击查看全部</div>
                 </div>
@@ -143,7 +143,7 @@
               <div class="flex items-center gap-3">
                 <button
                   @click="router.push('/ledgers')"
-                  class="text-sm text-gray-600 hover:text-gray-900 underline"
+                  class="text-sm text-muted hover:text-text underline"
                 >
                   查看全部 →
                 </button>
@@ -207,7 +207,7 @@
               <div class="section-title">待办事项</div>
               <button
                 @click="router.push('/todos')"
-                class="text-sm text-gray-600 hover:text-gray-900 underline"
+                class="text-sm text-muted hover:text-text underline"
               >
                 查看全部 →
               </button>
@@ -872,25 +872,22 @@ const getGreeting = () => {
 
 <style scoped>
 .input {
-  @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900 transition-shadow shadow-sm;
+  @apply w-full rounded-xl border border-border bg-surface px-4 py-3 text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 transition-shadow shadow-sm;
 }
 .btn {
   @apply px-4 py-2 rounded-xl font-semibold transition-all duration-150;
 }
 .btn.primary {
-  @apply bg-gray-900 text-white shadow-float active:scale-95;
+  @apply bg-accent text-on-accent shadow-float active:scale-95;
 }
 .btn.ghost {
-  @apply bg-white text-gray-700 border border-gray-200 hover:border-gray-300;
+  @apply bg-surface text-text border border-border hover:border-border/70;
 }
 .card {
-  @apply bg-white p-4 rounded-xl shadow;
+  @apply bg-surface p-4 rounded-xl shadow-card border border-border;
 }
 .section-title {
-  @apply text-sm font-semibold text-gray-500 mb-2;
-}
-.shadow-inner {
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.03), 0 6px 20px rgba(0, 0, 0, 0.05);
+  @apply text-sm font-semibold text-muted mb-2;
 }
 
 

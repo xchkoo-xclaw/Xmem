@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-primary text-gray-900">
+  <div class="min-h-screen bg-bg text-text">
     <header class="w-full max-w-4xl mx-auto px-4 pt-8 pb-4 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <button
@@ -16,7 +16,7 @@
     </header>
 
     <main class="w-full max-w-4xl mx-auto px-4 pb-20">
-      <div class="bg-white rounded-3xl shadow-float p-6 md:p-8">
+      <div class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
         <!-- 添加待办输入框 -->
         <TodoInput class="mb-6" />
 
@@ -109,6 +109,6 @@ const handleToggleItem = (id: number) => {
   @apply px-4 py-2 rounded-xl font-semibold transition-all duration-150;
 }
 .btn.ghost {
-  @apply bg-white text-gray-700 border border-gray-200 hover:border-gray-300;
+  @apply bg-surface text-text border border-border hover:border-border/70;
 }
 </style>

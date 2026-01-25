@@ -1,5 +1,8 @@
 <template>
-  <div class="flex items-center justify-between px-4 py-3 rounded-xl shadow min-h-[44px] group" :class="{ 'bg-yellow-50/30 border-2 border-yellow-400': todo.is_pinned, 'bg-white': !todo.is_pinned }">
+  <div
+    class="flex items-center justify-between px-4 py-3 rounded-xl shadow-card min-h-[44px] group border"
+    :class="todo.is_pinned ? 'bg-yellow-500/10 border-yellow-500/50' : 'bg-surface border-border'"
+  >
     <div class="flex items-center gap-3 flex-1 min-w-0">
       <input 
         type="checkbox" 
@@ -21,7 +24,7 @@
         @keydown.enter="finishEdit"
         @keydown.esc="cancelEdit"
         ref="editInputRef"
-        :class="{ 'line-through text-gray-400': todo.completed }"
+        :class="{ 'line-through text-muted': todo.completed }"
         class="flex-1 text-sm bg-transparent border-none outline-none px-0 py-0 cursor-text focus:ring-0"
         :readonly="todo.completed"
       />
@@ -31,7 +34,7 @@
         v-if="!todo.completed"
         @click.stop="$emit('pin', todo.id)"
         class="p-1.5 rounded-md active:scale-95 transition-colors"
-        :class="todo.is_pinned ? 'text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
+        :class="todo.is_pinned ? 'text-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10' : 'text-muted hover:text-text hover:bg-surface2'"
         :title="todo.is_pinned ? '取消置顶' : '置顶'"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :fill="todo.is_pinned ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
@@ -39,7 +42,7 @@
         </svg>
       </button>
       <button 
-        class="text-red-500 hover:text-red-700 p-1.5 rounded-md hover:bg-red-50 active:scale-95 transition-opacity flex-shrink-0"
+        class="text-red-500 hover:text-red-400 p-1.5 rounded-md hover:bg-red-500/10 active:scale-95 transition-opacity flex-shrink-0"
         @click="$emit('delete', todo.id)"
         title="删除待办"
       >
@@ -96,7 +99,7 @@ onMounted(() => {
 <style scoped>
 /* 确保输入框没有黑边 */
 input[type="text"] {
-  @apply border-gray-200;
+  @apply border-border;
 }
 </style>
 

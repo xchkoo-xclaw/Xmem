@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-primary text-gray-900">
+  <div class="min-h-screen bg-bg text-text">
     <header class="w-full max-w-4xl mx-auto px-4 pt-8 pb-4 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <button
@@ -23,10 +23,10 @@
           @click="handleStatisticsClick"
         />
         
-        <div class="bg-white rounded-3xl shadow-float p-4 md:p-6 lg:p-8 mx-auto">
+        <div class="bg-surface border border-border rounded-3xl shadow-card p-4 md:p-6 lg:p-8 mx-auto">
           <!-- 筛选栏 -->
           <div class="mb-6 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-            <label class="text-sm font-medium text-gray-700 whitespace-nowrap">分类筛选：</label>
+            <label class="text-sm font-medium text-text whitespace-nowrap">分类筛选：</label>
             <div class="flex-1 max-w-xs">
               <CustomSelect
                 v-model="selectedCategory"
@@ -41,16 +41,16 @@
           <template v-for="group in groupedLedgers" :key="group.key">
             <!-- 日期分割线 -->
             <div class="flex items-center gap-4 my-6">
-              <div class="flex-1 border-t border-gray-300"></div>
-              <div class="text-sm font-semibold text-gray-500 px-3">{{ group.label }}</div>
-              <div class="flex-1 border-t border-gray-300"></div>
+              <div class="flex-1 border-t border-border"></div>
+              <div class="text-sm font-semibold text-muted px-3">{{ group.label }}</div>
+              <div class="flex-1 border-t border-border"></div>
             </div>
             <!-- 该日期的 ledger 列表 -->
             <div class="space-y-3">
               <div
                 v-for="ledger in group.items"
                 :key="ledger.id"
-                class="card relative group hover:shadow-lg transition-all duration-200 cursor-pointer"
+                class="card relative group hover:shadow-float transition-all duration-200 cursor-pointer"
                 :class="{ 
                   'opacity-60': ledger.status === 'pending' || ledger.status === 'processing',
                   'border-2 border-blue-300 border-dashed': ledger.status === 'pending' || ledger.status === 'processing'
@@ -65,7 +65,7 @@
                   <button
                     v-if="ledger.status === 'completed'"
                     @click.stop="handleEdit(ledger)"
-                    class="text-gray-500 hover:text-gray-700 p-1.5 rounded-md hover:bg-gray-50 active:scale-95"
+                    class="text-muted hover:text-text p-1.5 rounded-md hover:bg-surface2 active:scale-95"
                     title="编辑"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -74,7 +74,7 @@
                   </button>
                   <button
                     @click.stop="handleDelete(ledger.id)"
-                    class="text-red-500 hover:text-red-700 p-1.5 rounded-md hover:bg-red-50 active:scale-95"
+                    class="text-red-500 hover:text-red-400 p-1.5 rounded-md hover:bg-red-500/10 active:scale-95"
                     title="删除"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -87,11 +87,11 @@
           </template>
         </div>
         <div v-else-if="!loading" class="text-center py-12">
-          <p class="text-gray-400 text-lg">还没有记账</p>
-          <p class="text-gray-400 text-sm mt-2">在主界面添加你的第一条记账吧</p>
+          <p class="text-muted text-lg">还没有记账</p>
+          <p class="text-muted text-sm mt-2">在主界面添加你的第一条记账吧</p>
         </div>
         <div v-else class="text-center py-12">
-          <p class="text-gray-400">加载中...</p>
+          <p class="text-muted">加载中...</p>
         </div>
 
         <!-- 分页 -->
@@ -103,7 +103,7 @@
           >
             上一页
           </button>
-          <span class="text-sm text-gray-600">
+          <span class="text-sm text-muted">
             第 {{ currentPage }} / {{ data.ledgerPagination.totalPages }} 页
             (共 {{ data.ledgerPagination.total }} 条)
           </span>
@@ -300,16 +300,16 @@ onMounted(async () => {
 
 <style scoped>
 .card {
-  @apply bg-white p-4 rounded-xl shadow;
+  @apply bg-surface p-4 rounded-xl shadow-card border border-border;
 }
 .btn {
   @apply px-4 py-2 rounded-xl font-semibold transition-all duration-150;
 }
 .btn.primary {
-  @apply bg-gray-900 text-white shadow-float active:scale-95;
+  @apply bg-accent text-on-accent shadow-float active:scale-95;
 }
 .btn.ghost {
-  @apply bg-white text-gray-700 border border-gray-200 hover:border-gray-300;
+  @apply bg-surface text-text border border-border hover:border-border/70;
 }
 
 </style>

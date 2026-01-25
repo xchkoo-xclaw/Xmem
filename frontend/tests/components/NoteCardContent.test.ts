@@ -1,6 +1,7 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { defineComponent, nextTick } from "vue";
+import { createPinia, setActivePinia } from "pinia";
 import NoteCardContent from "../../src/components/NoteCardContent.vue";
 import type { Note } from "../../src/stores/data";
 
@@ -11,6 +12,7 @@ vi.mock("md-editor-v3", () => {
       props: {
         editorId: { type: String, required: true },
         modelValue: { type: String, required: true },
+        theme: { type: String, required: false },
       },
       template: `<div class="md-preview-stub" v-html="modelValue"></div>`,
     }),
@@ -81,9 +83,12 @@ afterEach(() => {
 
 describe("NoteCardContent", () => {
   it("点击操作按钮会触发 copy/delete/pin 事件", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
     const wrapper = mount(NoteCardContent, {
       props: { note: createNote() },
       global: {
+        plugins: [pinia],
         directives: {
           secureDisplay: {
             mounted() {},
@@ -104,9 +109,12 @@ describe("NoteCardContent", () => {
   });
 
   it("双击内容区域会触发 edit 事件", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
     const wrapper = mount(NoteCardContent, {
       props: { note: createNote() },
       global: {
+        plugins: [pinia],
         directives: {
           secureDisplay: {
             mounted() {},
@@ -122,9 +130,12 @@ describe("NoteCardContent", () => {
   });
 
   it("带 searchQuery 时会高亮匹配文本", () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
     const wrapper = mount(NoteCardContent, {
       props: { note: createNote({ body_md: "foo bar baz" }), searchQuery: "bar" },
       global: {
+        plugins: [pinia],
         directives: {
           secureDisplay: {
             mounted() {},
@@ -141,10 +152,13 @@ describe("NoteCardContent", () => {
 
   it("内容高度超过阈值时会显示折叠提示", async () => {
     const ro = installResizeObserverMock();
+    const pinia = createPinia();
+    setActivePinia(pinia);
 
     const wrapper = mount(NoteCardContent, {
       props: { note: createNote({ body_md: "x".repeat(500) }) },
       global: {
+        plugins: [pinia],
         directives: {
           secureDisplay: {
             mounted() {},

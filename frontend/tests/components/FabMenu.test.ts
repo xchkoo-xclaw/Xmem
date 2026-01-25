@@ -1,11 +1,15 @@
 import { mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createPinia, setActivePinia } from "pinia";
 import FabMenu from "../../src/components/FabMenu.vue";
 
 let reloadSpy: ReturnType<typeof vi.fn>;
+let pinia: ReturnType<typeof createPinia>;
 
 describe("FabMenu", () => {
   beforeEach(() => {
+    pinia = createPinia();
+    setActivePinia(pinia);
     reloadSpy = vi.fn();
     vi.stubGlobal("location", { reload: reloadSpy } as any);
   });
@@ -17,6 +21,7 @@ describe("FabMenu", () => {
   it("默认不展开子菜单", () => {
     const wrapper = mount(FabMenu, {
       global: {
+        plugins: [pinia],
         stubs: { Teleport: true, "transition-group": false },
       },
     });
@@ -32,11 +37,14 @@ describe("FabMenu", () => {
   it("点击主菜单按钮会展开与收起子菜单", async () => {
     const wrapper = mount(FabMenu, {
       global: {
+        plugins: [pinia],
         stubs: { Teleport: true, "transition-group": false },
       },
     });
 
-    const [refreshButton, toggleButton] = wrapper.findAll("button.fab-main");
+    const fabButtons = wrapper.findAll("button.fab-main");
+    const refreshButton = fabButtons[0];
+    const toggleButton = fabButtons[fabButtons.length - 1];
     expect(refreshButton.exists()).toBe(true);
     expect(toggleButton.exists()).toBe(true);
 
@@ -51,11 +59,13 @@ describe("FabMenu", () => {
   it("点击菜单项会触发对应的 emits", async () => {
     const wrapper = mount(FabMenu, {
       global: {
+        plugins: [pinia],
         stubs: { Teleport: true, "transition-group": false },
       },
     });
 
-    const [, toggleButton] = wrapper.findAll("button.fab-main");
+    const fabButtons = wrapper.findAll("button.fab-main");
+    const toggleButton = fabButtons[fabButtons.length - 1];
     await toggleButton.trigger("click");
 
     await wrapper.findAll("button.fab-sub").find((b) => b.text().includes("笔记库"))!.trigger("click");
@@ -68,6 +78,7 @@ describe("FabMenu", () => {
   it("点击刷新按钮会调用 location.reload", async () => {
     const wrapper = mount(FabMenu, {
       global: {
+        plugins: [pinia],
         stubs: { Teleport: true, "transition-group": false },
       },
     });

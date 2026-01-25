@@ -41,8 +41,8 @@ describe("TabSwitcher", () => {
     });
 
     const buttons = wrapper.findAll("button");
-    expect(buttons[0].classes().join(" ")).not.toContain("bg-gray-900");
-    expect(buttons[1].classes().join(" ")).toContain("bg-gray-900");
+    expect(buttons[0].classes().join(" ")).not.toContain("bg-accent");
+    expect(buttons[1].classes().join(" ")).toContain("bg-accent");
   });
 });
 
