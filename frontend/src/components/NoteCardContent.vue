@@ -3,7 +3,7 @@
     <!-- 笔记内容 -->
     <div 
       :ref="(el) => handleNoteHeightRef(el)"
-      class="text-gray-800 pr-10 pb-10 break-words note-content relative"
+      class="text-text pr-10 pb-10 break-words note-content relative"
       :class="{ 'note-collapsed': isCollapsed }"
       @dblclick="$emit('edit')"
     >
@@ -12,6 +12,7 @@
         <MdPreview 
           :editorId="`note-preview-${note.id}`" 
           :modelValue="displayContent" 
+          :theme="theme.resolvedTheme"
           class="md-preview-custom"
         />
       </div>
@@ -21,14 +22,14 @@
     <div v-if="isCollapsed" class="text-xs text-blue-500 mt-2 mb-2">点击查看完整内容 →</div>
     
     <!-- 时间和操作按钮 -->
-    <div class="text-xs text-gray-400 mt-2 absolute bottom-2 left-4 flex items-center gap-2">
+    <div class="text-xs text-muted mt-2 absolute bottom-2 left-4 flex items-center gap-2">
       <span v-if="note.is_pinned" class="text-yellow-500" title="已置顶">📌</span>
       <span>{{ formatTime(note.created_at) }}</span>
     </div>
     <div class="absolute bottom-2 right-2 flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
       <button
         @click.stop="$emit('pin')"
-        class="text-gray-500 hover:text-gray-700 p-1.5 rounded-md hover:bg-gray-50 active:scale-95"
+        class="text-muted hover:text-text p-1.5 rounded-md hover:bg-surface2 active:scale-95"
         :class="{ 'text-yellow-500': note.is_pinned }"
         :title="note.is_pinned ? '取消置顶' : '置顶'"
       >
@@ -38,7 +39,7 @@
       </button>
       <button
         @click.stop="$emit('copy')"
-        class="text-gray-500 hover:text-gray-700 p-1.5 rounded-md hover:bg-gray-50 active:scale-95"
+        class="text-muted hover:text-text p-1.5 rounded-md hover:bg-surface2 active:scale-95"
         title="复制文本"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -47,7 +48,7 @@
       </button>
       <button
         @click.stop="$emit('delete')"
-        class="text-red-500 hover:text-red-700 p-1.5 rounded-md hover:bg-red-50 active:scale-95"
+        class="text-red-500 hover:text-red-400 p-1.5 rounded-md hover:bg-red-500/10 active:scale-95"
         title="删除笔记"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -63,6 +64,7 @@ import { ref, nextTick, computed, onUnmounted } from "vue";
 import type { Note } from "../stores/data";
 import { MdPreview } from 'md-editor-v3';
 import 'md-editor-v3/lib/style.css';
+import { useThemeStore } from "../stores/theme";
 
 const props = defineProps<{
   note: Note;
@@ -76,6 +78,8 @@ const emit = defineEmits<{
   edit: [];
 }>();
 
+const theme = useThemeStore();
+
 // 处理搜索高亮
 const displayContent = computed(() => {
   const content = props.note.body_md || '';
@@ -87,7 +91,7 @@ const displayContent = computed(() => {
   const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const regex = new RegExp(`(${escapedTerm})`, 'gi');
   
-  return content.replace(regex, '<mark class="bg-yellow-200 text-gray-900">$1</mark>');
+  return content.replace(regex, '<mark class="bg-yellow-300/40 text-text px-0.5 rounded">$1</mark>');
 });
 
 // 判断笔记是否需要折叠

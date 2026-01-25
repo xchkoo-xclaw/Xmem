@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-primary">
+  <div class="min-h-screen bg-bg text-text">
     <router-view />
 
     <transition

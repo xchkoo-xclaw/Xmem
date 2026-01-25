@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-primary text-gray-900">
+  <div class="min-h-screen bg-bg text-text">
     <header class="w-full max-w-4xl md:max-w-7xl mx-auto px-4 pt-8 pb-4 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <button
@@ -26,14 +26,15 @@
     </header>
 
     <main class="w-full max-w-4xl md:max-w-7xl mx-auto px-4 pb-20">
-      <div class="bg-white rounded-3xl shadow-float p-6 md:p-8">
+      <div class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
         <MdEditor 
           v-secure-display
           v-model="content" 
           @onUploadImg="onUploadImg"
-          class="min-h-[600px] rounded-xl overflow-hidden border border-gray-200"
+          class="min-h-[600px] rounded-xl overflow-hidden border border-border"
           :toolbars="toolbars"
           :toolbarsExclude="['github']"
+          :theme="theme.resolvedTheme"
         >
           <template #defToolbars>
             <NormalToolbar title="插入文件" @click="triggerFileUpload">
@@ -59,6 +60,7 @@ import { MdEditor, NormalToolbar, type ToolbarNames } from 'md-editor-v3';
 import 'md-editor-v3/lib/style.css';
 import { useDataStore } from "../stores/data";
 import { useToastStore } from "../stores/toast";
+import { useThemeStore } from "../stores/theme";
 
 interface Props {
   noteId?: number | null;
@@ -72,6 +74,7 @@ const props = withDefaults(defineProps<Props>(), {
 const router = useRouter();
 const data = useDataStore();
 const toast = useToastStore();
+const theme = useThemeStore();
 const content = ref("");
 const saving = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -240,9 +243,9 @@ const handleSave = async () => {
   @apply px-4 py-2 rounded-xl font-semibold transition-all duration-150;
 }
 .btn.primary {
-  @apply bg-gray-900 text-white shadow-float active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply bg-accent text-on-accent shadow-float active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
 }
 .btn.ghost {
-  @apply bg-white text-gray-700 border border-gray-200 hover:border-gray-300;
+  @apply bg-surface text-text border border-border hover:border-border/70 disabled:opacity-50 disabled:cursor-not-allowed;
 }
 </style>

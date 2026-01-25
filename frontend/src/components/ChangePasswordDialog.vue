@@ -5,16 +5,16 @@
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
       @click.self="handleClose"
     >
-      <div class="bg-white rounded-3xl shadow-float w-full max-w-md">
-        <div class="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 class="text-2xl font-bold text-gray-900">修改密码</h2>
-          <button @click="handleClose" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">
+      <div class="bg-surface border border-border rounded-3xl shadow-card w-full max-w-md">
+        <div class="flex items-center justify-between p-6 border-b border-border">
+          <h2 class="text-2xl font-bold text-text">修改密码</h2>
+          <button @click="handleClose" class="text-muted hover:text-text text-2xl leading-none">
             ×
           </button>
         </div>
         <form @submit.prevent="handleSubmit" class="p-6 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">原密码</label>
+            <label class="block text-sm font-medium text-text mb-2">原密码</label>
             <input
               v-model="form.oldPassword"
               type="password"
@@ -24,7 +24,7 @@
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">新密码</label>
+            <label class="block text-sm font-medium text-text mb-2">新密码</label>
             <input
               v-model="form.newPassword"
               type="password"
@@ -34,7 +34,7 @@
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">确认新密码</label>
+            <label class="block text-sm font-medium text-text mb-2">确认新密码</label>
             <input
               v-model="form.confirmPassword"
               type="password"
@@ -137,19 +137,19 @@ const handleSubmit = async () => {
 }
 
 .input {
-  @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900 transition-shadow shadow-sm;
+  @apply w-full rounded-xl border border-border bg-surface px-4 py-3 text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 transition-shadow shadow-sm;
 }
 .btn {
   @apply px-4 py-2 rounded-xl font-semibold transition-all duration-150;
 }
 .btn.primary {
-  @apply bg-gray-900 text-white shadow-float active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply bg-accent text-on-accent shadow-float active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
 }
 .btn.ghost {
-  @apply bg-white text-gray-700 border border-gray-200 hover:border-gray-300 active:scale-95;
+  @apply bg-surface text-text border border-border hover:border-border/70 active:scale-95;
 }
 .shadow-float {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-float);
 }
 </style>
 

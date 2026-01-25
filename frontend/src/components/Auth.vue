@@ -1,17 +1,17 @@
 <template>
-  <div class="min-h-screen bg-primary flex flex-col items-center">
+  <div class="min-h-screen bg-bg text-text flex flex-col items-center">
     <div class="w-full flex-1 flex items-center justify-center px-4">
       <div class="w-full max-w-md">
-        <div class="bg-white rounded-3xl shadow-float p-8 md:p-10">
+        <div class="bg-surface border border-border rounded-3xl shadow-card p-8 md:p-10">
           <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">Xmem</h1>
-            <p class="text-gray-600">个人记账 + 待办</p>
+            <h1 class="text-3xl font-bold text-text mb-2">Xmem</h1>
+            <p class="text-muted">个人记账 + 待办</p>
           </div>
 
           <!-- 表单 -->
           <form @submit.prevent="handleSubmit" class="space-y-4">
             <div v-if="!isLogin">
-              <label class="block text-sm font-medium text-gray-700 mb-2">昵称</label>
+              <label class="block text-sm font-medium text-text mb-2">昵称</label>
               <input
                 v-model="userName"
                 type="text"
@@ -21,7 +21,7 @@
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">邮箱</label>
+              <label class="block text-sm font-medium text-text mb-2">邮箱</label>
               <input
                 v-model="email"
                 type="email"
@@ -31,7 +31,7 @@
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">密码</label>
+              <label class="block text-sm font-medium text-text mb-2">密码</label>
               <input
                 v-model="password"
                 type="password"
@@ -41,7 +41,7 @@
               />
             </div>
             <div v-if="!isLogin">
-              <label class="block text-sm font-medium text-gray-700 mb-2">确认密码</label>
+              <label class="block text-sm font-medium text-text mb-2">确认密码</label>
               <input
                 v-model="confirmPassword"
                 type="password"
@@ -61,7 +61,7 @@
             <div class="text-center">
               <button
                 type="button"
-                class="text-sm text-gray-500 hover:text-gray-700 underline"
+                class="text-sm text-muted hover:text-text underline"
                 @click="switchMode"
               >
                 {{ isLogin ? "没有账号？前往注册" : "已有账号？前往登录" }}
@@ -148,16 +148,16 @@ const handleSubmit = async () => {
 
 <style scoped>
 .input {
-  @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900 transition-shadow shadow-sm;
+  @apply w-full rounded-xl border border-border bg-surface px-4 py-3 text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 transition-shadow shadow-sm;
 }
 .btn {
   @apply px-4 py-2 rounded-xl font-semibold transition-all duration-150;
 }
 .btn.primary {
-  @apply bg-gray-900 text-white shadow-float active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply bg-accent text-on-accent shadow-float active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
 }
 .shadow-float {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-float);
 }
 </style>
 

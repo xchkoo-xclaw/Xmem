@@ -6,22 +6,22 @@
         class="confirm-overlay fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
         @click.self="handleCancel"
       >
-        <div class="confirm-dialog bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+        <div class="confirm-dialog bg-surface border border-border rounded-xl shadow-card max-w-md w-full mx-4 overflow-hidden">
           <!-- 标题 -->
-          <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="text-lg font-semibold text-gray-900">{{ title }}</h3>
+          <div class="px-6 py-4 border-b border-border">
+            <h3 class="text-lg font-semibold text-text">{{ title }}</h3>
           </div>
 
           <!-- 内容 -->
           <div class="px-6 py-4">
-            <p class="text-gray-700">{{ message }}</p>
+            <p class="text-text">{{ message }}</p>
           </div>
 
           <!-- 按钮 -->
-          <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
+          <div class="px-6 py-4 bg-surface2 flex justify-end gap-3">
             <button
               @click="handleCancel"
-              class="px-4 py-2 rounded-lg font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition-colors"
+              class="px-4 py-2 rounded-lg font-medium text-text bg-surface border border-border hover:bg-surface2 transition-colors"
             >
               {{ cancelText }}
             </button>

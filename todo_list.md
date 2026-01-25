@@ -235,3 +235,5 @@
     feature:
         由于升级到https 改成 密码前端明文传输 后端加密存储的形式 2026/1/20
     
+    feature:
+        替换后端集成测试数据库为testcontainers 修复了github action ci测试的问题

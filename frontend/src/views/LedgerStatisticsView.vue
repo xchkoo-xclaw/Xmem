@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-primary text-gray-900">
+  <div class="min-h-screen bg-bg text-text">
     <header class="w-full max-w-4xl mx-auto px-4 pt-8 pb-4 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <button
@@ -17,25 +17,25 @@
 
     <main class="w-full max-w-4xl mx-auto px-4 pb-20">
       <div v-if="loading" class="text-center py-12">
-        <p class="text-gray-400">加载中...</p>
+        <p class="text-muted">加载中...</p>
       </div>
       <div v-else-if="statistics" class="space-y-6">
         <!-- 月度小结卡片 -->
-        <div class="bg-white rounded-3xl shadow-float p-6 md:p-8">
-          <h2 class="text-lg font-bold text-gray-900 mb-4">月度小结</h2>
+        <div class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
+          <h2 class="text-lg font-bold text-text mb-4">月度小结</h2>
           
           <!-- 近6个月支出柱状图 -->
           <div class="mb-6">
-            <h3 class="text-sm font-semibold text-gray-600 mb-3">近6个月支出趋势</h3>
+            <h3 class="text-sm font-semibold text-muted mb-3">近6个月支出趋势</h3>
             <div class="h-64">
               <v-chart :option="monthlyChartOption" autoresize />
             </div>
           </div>
 
           <!-- 月度对比 -->
-          <div v-if="statistics.current_month_total > 0 || statistics.last_month_total > 0" class="mt-6 p-4 bg-blue-50 rounded-xl">
+          <div v-if="statistics.current_month_total > 0 || statistics.last_month_total > 0" class="mt-6 p-4 bg-surface2 border border-border rounded-xl">
             <div class="flex items-center justify-between">
-              <span class="text-sm text-gray-600">本月 vs 上月</span>
+              <span class="text-sm text-muted">本月 vs 上月</span>
               <span 
                 class="text-sm font-semibold"
                 :class="statistics.month_diff >= 0 ? 'text-red-600' : 'text-green-600'"
@@ -48,12 +48,12 @@
         </div>
 
         <!-- 年度总结卡片 -->
-        <div class="bg-white rounded-3xl shadow-float p-6 md:p-8">
-          <h2 class="text-lg font-bold text-gray-900 mb-4">年度总结</h2>
+        <div class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
+          <h2 class="text-lg font-bold text-text mb-4">年度总结</h2>
           
           <!-- 每月支出柱状图 -->
           <div class="mb-6">
-            <h3 class="text-sm font-semibold text-gray-600 mb-3">全年支出趋势</h3>
+            <h3 class="text-sm font-semibold text-muted mb-3">全年支出趋势</h3>
             <div class="h-64">
               <v-chart :option="yearlyChartOption" autoresize />
             </div>
@@ -61,16 +61,16 @@
         </div>
 
         <!-- 支出分类卡片 -->
-        <div class="bg-white rounded-3xl shadow-float p-6 md:p-8">
-          <h2 class="text-lg font-bold text-gray-900 mb-4">支出分类</h2>
+        <div class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
+          <h2 class="text-lg font-bold text-text mb-4">支出分类</h2>
           
           <!-- 分类占比饼图 -->
           <div class="mb-6">
-            <h3 class="text-sm font-semibold text-gray-600 mb-3">分类占比</h3>
+            <h3 class="text-sm font-semibold text-muted mb-3">分类占比</h3>
             <div class="h-80">
               <v-chart :option="categoryChartOption" autoresize />
             </div>
-            <div v-if="isNarrowScreen" class="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-gray-600">
+            <div v-if="isNarrowScreen" class="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-muted">
               <div
                 v-for="(item, index) in statistics.category_stats"
                 :key="item.category"
@@ -87,7 +87,7 @@
             <div 
               v-for="(item, index) in statistics.category_stats"
               :key="item.category"
-              class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+              class="flex items-center gap-3 p-3 bg-surface2 border border-border rounded-lg"
             >
               <div 
                 class="w-4 h-4 rounded-full flex-shrink-0"
@@ -95,11 +95,11 @@
               ></div>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between mb-1">
-                  <span class="text-sm font-medium text-gray-900 truncate">{{ item.category }}</span>
-                  <span class="text-sm font-semibold text-gray-700 ml-2">¥{{ item.amount.toLocaleString() }}</span>
+                  <span class="text-sm font-medium text-text truncate">{{ item.category }}</span>
+                  <span class="text-sm font-semibold text-text ml-2">¥{{ item.amount.toLocaleString() }}</span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div class="flex-1 h-2 bg-border/50 rounded-full overflow-hidden">
                     <div
                       class="h-full transition-all duration-300"
                       :style="{ 
@@ -108,16 +108,16 @@
                       }"
                     ></div>
                   </div>
-                  <span class="text-xs text-gray-500 w-12 text-right">{{ item.percentage.toFixed(1) }}%</span>
+                  <span class="text-xs text-muted w-12 text-right">{{ item.percentage.toFixed(1) }}%</span>
                 </div>
-                <div class="text-xs text-gray-500 mt-1">{{ item.count }} 笔</div>
+                <div class="text-xs text-muted mt-1">{{ item.count }} 笔</div>
               </div>
             </div>
           </div>
         </div>
       </div>
       <div v-else class="text-center py-12">
-        <p class="text-gray-400 text-lg">暂无统计数据</p>
+        <p class="text-muted text-lg">暂无统计数据</p>
       </div>
     </main>
   </div>
@@ -137,7 +137,7 @@ import {
 import { useDataStore } from "../stores/data";
 import type { LedgerStatistics } from "../stores/data";
 import { useRouter } from "vue-router";
-import VChart, { THEME_KEY } from "vue-echarts";
+import VChart from "vue-echarts";
 
 use([
   CanvasRenderer,
@@ -189,7 +189,7 @@ const monthlyChartOption = computed(() => {
       data: months,
       axisLabel: {
         fontSize: 12,
-        color: '#6B7280'
+        color: 'rgb(var(--c-text-muted))'
       }
     },
     yAxis: {
@@ -197,7 +197,7 @@ const monthlyChartOption = computed(() => {
       axisLabel: {
         formatter: (value: number) => `¥${(value / 1000).toFixed(0)}k`,
         fontSize: 12,
-        color: '#6B7280'
+        color: 'rgb(var(--c-text-muted))'
       }
     },
     series: [
@@ -255,7 +255,7 @@ const yearlyChartOption = computed(() => {
       data: months,
       axisLabel: {
         fontSize: 11,
-        color: '#6B7280',
+        color: 'rgb(var(--c-text-muted))',
         rotate: 45
       }
     },
@@ -264,7 +264,7 @@ const yearlyChartOption = computed(() => {
       axisLabel: {
         formatter: (value: number) => `¥${(value / 1000).toFixed(0)}k`,
         fontSize: 12,
-        color: '#6B7280'
+        color: 'rgb(var(--c-text-muted))'
       }
     },
     series: [
@@ -330,7 +330,8 @@ const categoryChartOption = computed(() => {
       left: 'left',
       top: 'middle',
       textStyle: {
-        fontSize: 12
+        fontSize: 12,
+        color: 'rgb(var(--c-text-muted))'
       }
     },
     series: [
@@ -341,7 +342,7 @@ const categoryChartOption = computed(() => {
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 8,
-          borderColor: '#fff',
+          borderColor: 'rgb(var(--c-surface))',
           borderWidth: 2
         },
         label: {
@@ -402,7 +403,7 @@ onUnmounted(() => {
   @apply px-4 py-2 rounded-xl font-semibold transition-all duration-150;
 }
 .btn.ghost {
-  @apply bg-white text-gray-700 border border-gray-200 hover:border-gray-300;
+  @apply bg-surface text-text border border-border hover:border-border/70;
 }
 </style>
 

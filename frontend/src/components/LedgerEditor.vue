@@ -7,11 +7,11 @@
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4" 
         @click.self="handleCancel"
       >
-        <div class="bg-white rounded-3xl shadow-float w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div class="bg-surface border border-border rounded-3xl shadow-card w-full max-w-md max-h-[90vh] overflow-y-auto">
           <!-- 头部 -->
-          <div class="flex items-center justify-between p-6 border-b border-gray-200">
-            <h2 class="text-2xl font-bold text-gray-900">编辑记账</h2>
-            <button @click="handleCancel" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">
+          <div class="flex items-center justify-between p-6 border-b border-border">
+            <h2 class="text-2xl font-bold text-text">编辑记账</h2>
+            <button @click="handleCancel" class="text-muted hover:text-text text-2xl leading-none">
               ×
             </button>
           </div>
@@ -20,7 +20,7 @@
           <div class="p-6 space-y-4">
             <!-- 金额 -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">金额</label>
+              <label class="block text-sm font-medium text-text mb-2">金额</label>
               <input
                 v-model.number="form.amount"
                 type="number"
@@ -32,7 +32,7 @@
 
             <!-- 货币 -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">货币</label>
+              <label class="block text-sm font-medium text-text mb-2">货币</label>
               <CustomSelect
                 v-model="form.currency"
                 :options="currencyOptions"
@@ -42,7 +42,7 @@
 
             <!-- 分类 -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">分类</label>
+              <label class="block text-sm font-medium text-text mb-2">分类</label>
               <CustomSelect
                 v-model="form.category"
                 :options="categoryOptions"
@@ -52,7 +52,7 @@
 
             <!-- 商家 -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">商家</label>
+              <label class="block text-sm font-medium text-text mb-2">商家</label>
               <input
                 v-model="form.merchant"
                 type="text"
@@ -63,7 +63,7 @@
 
             <!-- 原始文本 -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">原始文本</label>
+              <label class="block text-sm font-medium text-text mb-2">原始文本</label>
               <textarea
                 v-model="form.raw_text"
                 class="input h-24"
@@ -73,7 +73,7 @@
 
             <!-- 时间 -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">时间</label>
+              <label class="block text-sm font-medium text-text mb-2">时间</label>
               <input
                 v-model="form.event_time"
                 type="datetime-local"
@@ -252,19 +252,19 @@ const handleSave = async () => {
 }
 
 .btn.ghost {
-  @apply bg-white text-gray-700 border border-gray-200 hover:border-gray-300;
+  @apply bg-surface text-text border border-border hover:border-border/70;
 }
 
 .btn.primary {
-  @apply bg-gray-900 text-white hover:bg-gray-800;
+  @apply bg-accent text-on-accent;
 }
 
 .shadow-float {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-float);
 }
 
 .input {
-  @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900 transition-shadow shadow-sm;
+  @apply w-full rounded-xl border border-border bg-surface px-4 py-3 text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 transition-shadow shadow-sm;
 }
 
 </style>

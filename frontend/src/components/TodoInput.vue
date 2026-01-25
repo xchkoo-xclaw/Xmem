@@ -9,7 +9,7 @@
         maxlength="50"
       />
       <span 
-        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"
+        class="absolute right-3 top-1/2 -translate-y-1/2 text-muted text-xs pointer-events-none"
         :class="{ 'text-red-500': text.length > 50 }"
       >
         {{ text.length }}/50
@@ -107,12 +107,12 @@ const handleEnter = async () => {
 
 <style scoped>
 .input {
-  @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900 transition-shadow shadow-sm;
+  @apply w-full rounded-xl border border-border bg-surface px-4 py-3 text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 transition-shadow shadow-sm;
 }
 .btn {
   @apply px-4 py-2 rounded-xl font-semibold transition-all duration-150;
 }
 .btn.primary {
-  @apply bg-gray-900 text-white shadow-float active:scale-95;
+  @apply bg-accent text-on-accent shadow-float active:scale-95;
 }
 </style>

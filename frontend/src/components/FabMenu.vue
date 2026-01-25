@@ -7,6 +7,54 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
       </svg>
     </button>
+    <!-- 主题切换按钮（始终显示，位置会根据菜单是否打开而改变） -->
+    <button class="fab-main" @click="theme.cycleTheme()" :title="themeButtonTitle">
+      <svg
+        v-if="theme.selectedMode === 'light'"
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-6 w-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"
+        />
+      </svg>
+      <svg
+        v-else-if="theme.selectedMode === 'dark'"
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-6 w-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M7.05 16.95l-1.414 1.414m0-11.314l1.414 1.414m11.314 11.314l1.414 1.414M12 8a4 4 0 100 8 4 4 0 000-8z"
+        />
+      </svg>
+      <svg
+        v-else
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-6 w-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M9.75 17h4.5m-6-3h7.5M6 4h12a2 2 0 012 2v9a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z"
+        />
+      </svg>
+    </button>
     <!-- 菜单项（当打开时显示在刷新按钮和主菜单按钮之间） -->
     <transition-group name="fade">
       <!-- 从上到下：主界面、笔记库、记账库、统计、设置 -->
@@ -69,7 +117,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
+import { useThemeStore } from "../stores/theme";
 
 defineEmits<{
   home: [];
@@ -81,6 +130,13 @@ defineEmits<{
 }>();
 
 const open = ref(false);
+const theme = useThemeStore();
+
+const themeButtonTitle = computed(() => {
+  if (theme.selectedMode === "light") return "切换主题：白天 → 黑夜";
+  if (theme.selectedMode === "dark") return theme.autoEnabled ? "切换主题：黑夜 → 跟随系统" : "切换主题：黑夜 → 白天";
+  return "切换主题：跟随系统 → 白天";
+});
 
 const handleRefresh = () => {
   location.reload();
@@ -89,10 +145,10 @@ const handleRefresh = () => {
 
 <style scoped>
 .fab-main {
-  @apply w-14 h-14 rounded-full bg-gray-900 text-white text-2xl shadow-float flex items-center justify-center transition-transform duration-200 active:scale-95;
+  @apply w-14 h-14 rounded-full bg-accent text-on-accent text-2xl shadow-float flex items-center justify-center transition-transform duration-200 active:scale-95;
 }
 .fab-sub {
-  @apply px-3 py-2 rounded-full bg-white shadow-float text-sm text-gray-700 hover:-translate-y-1 transition-all duration-200;
+  @apply px-3 py-2 rounded-full bg-surface shadow-float text-sm text-text border border-border hover:-translate-y-1 transition-all duration-200;
 }
 .fade-enter-active,
 .fade-leave-active {
@@ -104,4 +160,3 @@ const handleRefresh = () => {
   transform: translateY(10px);
 }
 </style>
-

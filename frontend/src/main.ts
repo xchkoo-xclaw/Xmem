@@ -2,8 +2,10 @@ import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "./App.vue";
 import router from "./router";
+import "./assets/theme.css";
 import "./assets/tailwind.css";
 import { vSecureDisplay } from "./directives/secureDisplay";
+import { useThemeStore } from "./stores/theme";
 
 const app = createApp(App);
 /**
@@ -28,5 +30,7 @@ app.config.errorHandler = (err) => {
  * 注入 router 实例给 api 客户端使用，避免 api -> router 的循环依赖。
  */
 (window as any).__xmemRouter = router;
-app.use(createPinia());
+const pinia = createPinia();
+app.use(pinia);
+useThemeStore(pinia).init();
 app.use(router).directive("secure-display", vSecureDisplay).mount("#app");

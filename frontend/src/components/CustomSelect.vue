@@ -6,15 +6,15 @@
       @click="toggleDropdown"
       :class="[
         'input w-full text-left flex items-center justify-between',
-        isOpen ? 'border-gray-900' : ''
+        isOpen ? 'border-accent' : ''
       ]"
     >
-      <span :class="{ 'text-gray-400': !modelValue }">
+      <span :class="{ 'text-muted': !modelValue }">
         {{ displayText || placeholder }}
       </span>
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        class="h-5 w-5 text-gray-400 transition-transform"
+        class="h-5 w-5 text-muted transition-transform"
         :class="{ 'rotate-180': isOpen }"
         fill="none"
         viewBox="0 0 24 24"
@@ -35,7 +35,7 @@
     >
       <div
         v-if="isOpen"
-        class="absolute z-50 mt-1 w-full bg-white rounded-xl border border-gray-200 shadow-lg max-h-60 overflow-auto custom-scrollbar"
+        class="absolute z-50 mt-1 w-full bg-surface rounded-xl border border-border shadow-float max-h-60 overflow-auto custom-scrollbar"
       >
         <button
           v-for="option in options"
@@ -46,8 +46,8 @@
             'w-full text-left px-4 py-3 text-sm transition-colors',
             'first:rounded-t-xl last:rounded-b-xl',
             modelValue === option.value
-              ? 'bg-gray-100 text-gray-900 font-medium'
-              : 'text-gray-700 hover:bg-gray-50'
+              ? 'bg-surface2 text-text font-medium'
+              : 'text-text hover:bg-surface2'
           ]"
         >
           {{ option.label }}
@@ -115,7 +115,7 @@ onUnmounted(() => {
 
 <style scoped>
 .input {
-  @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900 transition-shadow shadow-sm;
+  @apply w-full rounded-xl border border-border bg-surface px-4 py-3 text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 transition-shadow shadow-sm;
 }
 
 /* 自定义滚动条样式 - 极简风格 */

@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-primary text-gray-900">
+  <div class="min-h-screen bg-bg text-text">
     <header class="w-full max-w-4xl mx-auto px-4 pt-8 pb-4 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <button
@@ -26,7 +26,7 @@
     </header>
 
     <main class="w-full max-w-4xl mx-auto px-4 pb-20">
-      <div v-if="ledger" class="bg-white rounded-3xl shadow-float p-6 md:p-8">
+      <div v-if="ledger" class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
         <!-- Ledger 详情 -->
         <div class="space-y-6">
           <!-- 金额和状态 -->
@@ -36,7 +36,7 @@
                 <span v-if="ledger.status === 'pending' || ledger.status === 'processing'">待识别</span>
                 <span v-else>
                   {{ ledger.amount ?? "待识别" }} 
-                  <span class="text-lg text-gray-500">{{ ledger.currency }}</span>
+                  <span class="text-lg text-muted">{{ ledger.currency }}</span>
                 </span>
               </div>
             </div>
@@ -53,36 +53,36 @@
           <!-- 分类和商家 -->
           <div v-if="ledger.status === 'completed'" class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm text-gray-600 mb-1">分类</label>
-              <div class="text-gray-900 font-medium">{{ ledger.category || "未分类" }}</div>
+              <label class="block text-sm text-muted mb-1">分类</label>
+              <div class="text-text font-medium">{{ ledger.category || "未分类" }}</div>
             </div>
             <div>
-              <label class="block text-sm text-gray-600 mb-1">商家</label>
-              <div class="text-gray-900 font-medium">{{ ledger.merchant || "未知" }}</div>
+              <label class="block text-sm text-muted mb-1">商家</label>
+              <div class="text-text font-medium">{{ ledger.merchant || "未知" }}</div>
             </div>
           </div>
 
           <!-- 原始文本 -->
           <div>
-            <label class="block text-sm text-gray-600 mb-2">原始文本</label>
-            <div class="bg-primary rounded-2xl p-4 text-gray-800 whitespace-pre-wrap">
+            <label class="block text-sm text-muted mb-2">原始文本</label>
+            <div class="bg-primary rounded-2xl p-4 text-text whitespace-pre-wrap border border-border shadow-inset">
               {{ ledger.raw_text || (ledger.status === 'pending' || ledger.status === 'processing' ? '正在处理中，请稍候...' : '') }}
             </div>
           </div>
 
           <!-- 时间信息 -->
-          <div class="border-t pt-4 flex items-center justify-between">
-            <div class="text-xs text-gray-400">
+          <div class="border-t border-border pt-4 flex items-center justify-between">
+            <div class="text-xs text-muted">
               {{ ledger.event_time ? '记账时间：' : '创建时间：' }}{{ formatTime(ledger.event_time || ledger.created_at) }}
             </div>
-            <div v-if="ledger.updated_at && ledger.updated_at !== ledger.created_at" class="text-xs text-gray-400">
+            <div v-if="ledger.updated_at && ledger.updated_at !== ledger.created_at" class="text-xs text-muted">
               更新时间：{{ formatTime(ledger.updated_at) }}
             </div>
           </div>
         </div>
       </div>
       <div v-else class="text-center py-12">
-        <p class="text-gray-400">加载中...</p>
+        <p class="text-muted">加载中...</p>
       </div>
     </main>
   </div>
@@ -135,10 +135,10 @@ const formatTime = (time: string) => {
   @apply px-4 py-2 rounded-xl font-semibold transition-all duration-150;
 }
 .btn.primary {
-  @apply bg-gray-900 text-white shadow-float active:scale-95;
+  @apply bg-accent text-on-accent shadow-float active:scale-95;
 }
 .btn.ghost {
-  @apply bg-white text-gray-700 border border-gray-200 hover:border-gray-300;
+  @apply bg-surface text-text border border-border hover:border-border/70;
 }
 </style>
 

@@ -1,7 +1,10 @@
 <template>
-  <div class="bg-white rounded-xl shadow overflow-hidden" :class="{ 'border-2 border-yellow-400 bg-yellow-50/30': todo.is_pinned, 'border border-gray-100': !todo.is_pinned }">
+  <div
+    class="rounded-xl shadow-card overflow-hidden border"
+    :class="todo.is_pinned ? 'bg-yellow-500/10 border-yellow-500/50' : 'bg-surface border-border'"
+  >
     <!-- 组标题栏 -->
-    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 group" :class="{ 'bg-yellow-50/50': todo.is_pinned }">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-border group" :class="todo.is_pinned ? 'bg-yellow-500/10' : 'bg-surface'">
       <div class="flex items-center gap-3 flex-1 min-w-0">
         <input 
           type="checkbox" 
@@ -23,7 +26,7 @@
           @keydown.enter="finishEditTitle"
           @keydown.esc="cancelEditTitle"
           ref="titleInputRef"
-          :class="{ 'line-through text-gray-400': todo.completed }"
+          :class="{ 'line-through text-muted': todo.completed }"
           :readonly="todo.completed"
           class="flex-1 text-sm font-medium bg-transparent border-none outline-none px-0 py-0 cursor-text focus:ring-0"
         />
@@ -34,7 +37,7 @@
         <!-- 折叠按钮 -->
         <button
           @click="isCollapsed = !isCollapsed"
-          class="flex-shrink-0 text-gray-400 hover:text-gray-600 p-1.5 rounded-md hover:bg-gray-50 transition-transform"
+          class="flex-shrink-0 text-muted hover:text-text p-1.5 rounded-md hover:bg-surface2 transition-transform"
           :class="{ 'rotate-90': isCollapsed }"
           title="折叠/展开"
         >
@@ -46,7 +49,7 @@
           v-if="!todo.completed"
           @click.stop="$emit('pin', todo.id)"
           class="p-1.5 rounded-md active:scale-95 transition-colors"
-          :class="todo.is_pinned ? 'text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
+          :class="todo.is_pinned ? 'text-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10' : 'text-muted hover:text-text hover:bg-surface2'"
           :title="todo.is_pinned ? '取消置顶' : '置顶'"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :fill="todo.is_pinned ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
@@ -56,7 +59,7 @@
         <button
           v-if="!todo.completed"
           @click="handleAddItem"
-          class="text-gray-500 hover:text-gray-700 p-1.5 rounded-md hover:bg-gray-50 active:scale-95"
+          class="text-muted hover:text-text p-1.5 rounded-md hover:bg-surface2 active:scale-95"
           title="添加待办"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -65,7 +68,7 @@
         </button>
         <button
           @click="$emit('delete', todo.id)"
-          class="text-red-500 hover:text-red-700 p-1.5 rounded-md hover:bg-red-50 active:scale-95"
+          class="text-red-500 hover:text-red-400 p-1.5 rounded-md hover:bg-red-500/10 active:scale-95"
           title="删除组"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -76,11 +79,11 @@
     </div>
     
     <!-- 组内待办列表 -->
-    <div v-if="!isCollapsed" class="space-y-2 p-3 bg-gray-50">
+    <div v-if="!isCollapsed" class="space-y-2 p-3 bg-surface2">
       <div
         v-for="item in sortedGroupItems"
         :key="item.id"
-        class="flex items-center gap-3 bg-white px-3 py-2 rounded-lg min-h-[40px] group/item"
+        class="flex items-center gap-3 bg-surface px-3 py-2 rounded-lg min-h-[40px] group/item border border-border"
       >
         <input 
           type="checkbox" 
@@ -94,14 +97,14 @@
           @keydown.esc="cancelEditItem(item.id)"
           @keydown.enter.prevent="handleItemEnter(item.id)"
           :ref="el => setItemInputRef(item.id, el)"
-          :class="{ 'line-through text-gray-400': item.completed }"
+          :class="{ 'line-through text-muted': item.completed }"
           :placeholder="item.completed ? '' : '（待输入）'"
           :readonly="item.completed"
           class="flex-1 text-sm bg-transparent border-none outline-none px-0 py-0 cursor-text focus:ring-0"
         />
         <button
           @click="$emit('delete-item', item.id)"
-          class="text-red-500 hover:text-red-700 p-1.5 rounded-md hover:bg-red-50 active:scale-95 transition-opacity flex-shrink-0 md:opacity-0 md:group-hover/item:opacity-100"
+          class="text-red-500 hover:text-red-400 p-1.5 rounded-md hover:bg-red-500/10 active:scale-95 transition-opacity flex-shrink-0 md:opacity-0 md:group-hover/item:opacity-100"
           title="删除待办"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -348,7 +351,7 @@ onUnmounted(() => {
 <style scoped>
 /* 确保输入框没有黑边 */
 input[type="text"] {
-  @apply border-gray-200;
+  @apply border-border;
 }
 </style>
 
