@@ -68,9 +68,51 @@ class NoteCreate(NoteBase):
 class NoteOut(NoteBase):
     id: int
     is_pinned: bool = False
+    is_shared: bool = False
+    share_uuid: Optional[str] = None
     created_at: dt.datetime
     updated_at: dt.datetime
     files: Optional[list[NoteFileOut]] = None
+
+    class Config:
+        from_attributes = True
+        json_encoders = {dt.datetime: _encode_datetime_utc}
+
+
+class NoteShareLinkOut(BaseModel):
+    note_uuid: str
+    share_user_id: int
+    share_url: str
+
+
+class NoteShareToggleIn(BaseModel):
+    is_shared: bool
+
+
+class NoteShareStatusOut(BaseModel):
+    is_shared: bool
+    note_uuid: Optional[str] = None
+    share_user_id: int
+    share_url: Optional[str] = None
+
+
+class SharedUserOut(BaseModel):
+    id: int
+    email: EmailStr
+    user_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class NoteShareOut(NoteBase):
+    id: int
+    is_pinned: bool = False
+    created_at: dt.datetime
+    updated_at: dt.datetime
+    files: Optional[list[NoteFileOut]] = None
+    share_user: SharedUserOut
+    can_edit: bool = False
 
     class Config:
         from_attributes = True

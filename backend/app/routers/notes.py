@@ -1,8 +1,9 @@
 import os
 import re
 import inspect
+import uuid
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -10,10 +11,11 @@ from sqlalchemy.exc import IntegrityError
 
 from .. import models, schemas
 from ..db import get_session
-from ..auth import get_current_user
+from ..auth import get_current_user, get_optional_user
 from ..utils.file_utils import save_uploaded_img, save_uploaded_file
 
 router = APIRouter(prefix="/notes", tags=["notes"])
+public_router = APIRouter(prefix="/notes", tags=["notes"])
 
 # 文件上传目录
 UPLOAD_DIR = Path("uploads")
@@ -49,10 +51,10 @@ def markdown_references_uploaded_files(markdown_text: str) -> bool:
 
 
 def extract_referenced_image_urls(markdown_text: str) -> list[str]:
-    """从 markdown 中提取被引用的图片 URL（/notes/files/images/*）"""
+    """从 markdown 中提取被引用的图片 URL（/notes/files/images/* 或 /notes/share-files/images/*）"""
     if not markdown_text:
         return []
-    urls = re.findall(r"\((/notes/files/images/[^)\s]+)\)", markdown_text)
+    urls = re.findall(r"\((/notes/(?:share-files|files)/images/[^)\s]+)\)", markdown_text)
     seen = set()
     result: list[str] = []
     for url in urls:
@@ -63,16 +65,64 @@ def extract_referenced_image_urls(markdown_text: str) -> list[str]:
     return result
 
 
+def rewrite_markdown_for_share(markdown_text: str, share_uuid: str, share_user_id: int) -> str:
+    """将受保护资源链接改写为分享专用的下载/图片路径。"""
+    if not markdown_text:
+        return ""
+
+    def replace_path(match: re.Match) -> str:
+        file_type = match.group(1)
+        raw_name = match.group(2)
+        file_name = raw_name.split("?")[0].split("#")[0]
+        return (
+            f"/notes/share-files/{file_type}/{file_name}"
+            f"?note-uuid={share_uuid}&share-user-id={share_user_id}"
+        )
+
+    return re.sub(r"/notes/files/(images|files)/([^\s)]+)", replace_path, markdown_text)
+
+
 def build_note_out(note: models.Note) -> schemas.NoteOut:
     """构造 NoteOut，补齐 images/files 等计算字段"""
     return schemas.NoteOut(
         id=note.id,
         body_md=note.body_md,
         is_pinned=bool(note.is_pinned),
+        is_shared=bool(getattr(note, "is_shared", False)),
+        share_uuid=getattr(note, "share_uuid", None),
         created_at=note.created_at,
         updated_at=note.updated_at,
         images=extract_referenced_image_urls(note.body_md),
         files=None,
+    )
+
+
+def build_share_link(note_uuid: str, share_user_id: int, request: Request) -> str:
+    """构造前端分享链接地址。"""
+    origin = request.headers.get("origin")
+    base_url = (origin or str(request.base_url)).rstrip("/")
+    return f"{base_url}/view-share-note/?note-uuid={note_uuid}&share-user-id={share_user_id}"
+
+
+def build_share_note_out(
+    note: models.Note,
+    share_user: models.User,
+    can_edit: bool,
+    share_uuid: str,
+    share_user_id: int,
+) -> schemas.NoteShareOut:
+    """构造分享场景的 Note 输出结构。"""
+    shared_body = rewrite_markdown_for_share(note.body_md, share_uuid, share_user_id)
+    return schemas.NoteShareOut(
+        id=note.id,
+        body_md=shared_body,
+        is_pinned=bool(note.is_pinned),
+        created_at=note.created_at,
+        updated_at=note.updated_at,
+        images=extract_referenced_image_urls(shared_body),
+        files=None,
+        share_user=share_user,
+        can_edit=can_edit,
     )
 
 
@@ -279,6 +329,139 @@ async def get_note_file(
     if not db_file:
         raise HTTPException(status_code=404, detail="文件不存在或未关联到当前用户的笔记")
     # 物理文件存在性校验
+    file_path = Path(db_file.file_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="文件不存在")
+    return FileResponse(file_path)
+
+
+@router.post("/{note_id}/share", response_model=schemas.NoteShareLinkOut)
+async def share_note(
+    note_id: int,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: models.User = Depends(get_current_user),
+):
+    """生成或返回笔记分享链接。"""
+    result = await session.execute(
+        select(models.Note).where(models.Note.id == note_id, models.Note.user_id == current_user.id)
+    )
+    note = result.scalars().first()
+    if not note:
+        raise HTTPException(status_code=404, detail="笔记不存在")
+
+    if not note.share_uuid:
+        note.share_uuid = uuid.uuid4().hex
+    note.is_shared = True
+    await session.commit()
+    await session.refresh(note)
+
+    return schemas.NoteShareLinkOut(
+        note_uuid=note.share_uuid,
+        share_user_id=current_user.id,
+        share_url=build_share_link(note.share_uuid, current_user.id, request),
+    )
+
+
+@router.patch("/{note_id}/share-toggle", response_model=schemas.NoteShareStatusOut)
+async def toggle_share_note(
+    note_id: int,
+    payload: schemas.NoteShareToggleIn,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: models.User = Depends(get_current_user),
+):
+    """切换笔记分享状态：公开/私密。"""
+    result = await session.execute(
+        select(models.Note).where(models.Note.id == note_id, models.Note.user_id == current_user.id)
+    )
+    note = result.scalars().first()
+    if not note:
+        raise HTTPException(status_code=404, detail="笔记不存在")
+
+    if payload.is_shared:
+        if not note.share_uuid:
+            note.share_uuid = uuid.uuid4().hex
+        note.is_shared = True
+        await session.commit()
+        await session.refresh(note)
+        return schemas.NoteShareStatusOut(
+            is_shared=True,
+            note_uuid=note.share_uuid,
+            share_user_id=current_user.id,
+            share_url=build_share_link(note.share_uuid, current_user.id, request),
+        )
+    else:
+        note.is_shared = False
+        await session.commit()
+        await session.refresh(note)
+        return schemas.NoteShareStatusOut(
+            is_shared=False,
+            note_uuid=note.share_uuid,
+            share_user_id=current_user.id,
+            share_url=None,
+        )
+
+
+@public_router.get("/share", response_model=schemas.NoteShareOut)
+async def get_shared_note(
+    note_uuid: str,
+    share_user_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: models.User | None = Depends(get_optional_user),
+):
+    """获取分享笔记内容（仅在已分享状态下返回）。"""
+    result = await session.execute(
+        select(models.Note).where(
+            models.Note.share_uuid == note_uuid,
+            models.Note.user_id == share_user_id,
+            models.Note.is_shared.is_(True),
+        )
+    )
+    note = result.scalars().first()
+    if not note:
+        raise HTTPException(status_code=404, detail="笔记不存在或未分享")
+
+    result = await session.execute(select(models.User).where(models.User.id == share_user_id))
+    share_user = result.scalars().first()
+    if not share_user:
+        raise HTTPException(status_code=404, detail="分享人不存在")
+
+    can_edit = current_user is not None and current_user.id == note.user_id
+    return build_share_note_out(note, share_user, can_edit, note_uuid, share_user_id)
+
+
+@public_router.get("/share-files/{file_type}/{file_name}")
+async def get_shared_note_file(
+    file_type: str,
+    file_name: str,
+    note_uuid: str,
+    share_user_id: int,
+    session: AsyncSession = Depends(get_session),
+):
+    """下载分享笔记关联的文件或图片。"""
+    if file_type not in {"images", "files"}:
+        raise HTTPException(status_code=404, detail="文件不存在")
+
+    result = await session.execute(
+        select(models.Note).where(
+            models.Note.share_uuid == note_uuid,
+            models.Note.user_id == share_user_id,
+            models.Note.is_shared.is_(True),
+        )
+    )
+    note = result.scalars().first()
+    if not note:
+        raise HTTPException(status_code=404, detail="笔记不存在或未分享")
+
+    url_path = f"/notes/files/{file_type}/{file_name}"
+    result = await session.execute(
+        select(models.File).where(models.File.note_id == note.id, models.File.url_path == url_path)
+    )
+    db_file = result.scalars().first()
+    if not db_file:
+        raise HTTPException(status_code=404, detail="文件不存在或未关联到分享笔记")
+
     file_path = Path(db_file.file_path)
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="文件不存在")

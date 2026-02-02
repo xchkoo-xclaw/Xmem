@@ -1,7 +1,7 @@
 import api from "../api/client";
 
 /**
- * Finds all images in the container that are protected (e.g. start with /notes/files/)
+ * Finds all images in the container that are protected (e.g. start with /notes/files/ or /notes/share-files/)
  * and fetches them with authentication headers, replacing the src with a blob URL.
  */
 export const replaceImagesWithSecureUrls = async (container: HTMLElement) => {
@@ -14,7 +14,7 @@ export const replaceImagesWithSecureUrls = async (container: HTMLElement) => {
     
     // Process paths containing /notes/files/
     // This handles both /notes/files/... and /api/notes/files/...
-    if (src && src.includes("/notes/files/") && !src.startsWith("blob:")) {
+    if (src && (src.includes("/notes/files/") || src.includes("/notes/share-files/")) && !src.startsWith("blob:")) {
       try {
         // Check if we already have a loading flag to avoid double fetch
         if (img.dataset.loading === "true") return;
@@ -23,7 +23,7 @@ export const replaceImagesWithSecureUrls = async (container: HTMLElement) => {
         // Handle URL adjustment for api client
         let requestPath = src;
         // Try to extract the path starting from /notes/files/
-        const match = src.match(/(\/notes\/files\/.*)/);
+        const match = src.match(/(\/notes\/(?:share-files|files)\/.*)/);
         if (match) {
           requestPath = match[1];
         }

@@ -8,7 +8,34 @@ export interface Note {
   files?: Array<{ name: string; url: string; size: number }> | null;
   attachment_url?: string;
   is_pinned?: boolean;
+  is_shared?: boolean;
+  share_uuid?: string | null;
   created_at: string;
+}
+
+export interface SharedNoteUser {
+  id: number;
+  email: string;
+  user_name: string | null;
+}
+
+export interface SharedNote {
+  id: number;
+  body_md: string;
+  images?: string[] | null;
+  files?: Array<{ name: string; url: string; size: number }> | null;
+  is_pinned?: boolean;
+  created_at: string;
+  updated_at: string;
+  share_user: SharedNoteUser;
+  can_edit: boolean;
+}
+
+export interface NoteShareStatus {
+  is_shared: boolean;
+  note_uuid?: string | null;
+  share_user_id: number;
+  share_url?: string | null;
 }
 
 export interface LedgerEntry {
@@ -396,6 +423,37 @@ export const useDataStore = defineStore("data", {
       if (index !== -1) {
         this.notes[index] = data;
       }
+    },
+    /**
+     * 生成笔记分享链接。
+     */
+    async generateNoteShareLink(id: number): Promise<{ note_uuid: string; share_user_id: number; share_url: string }> {
+      const { data } = await api.post(`/notes/${id}/share`);
+      return data;
+    },
+    /**
+     * 切换分享状态（公开/私密）。
+     */
+    async toggleNoteShareStatus(id: number, isShared: boolean): Promise<NoteShareStatus> {
+      const { data } = await api.patch(`/notes/${id}/share-toggle`, { is_shared: isShared });
+      const index = this.notes.findIndex(n => n.id === id);
+      if (index !== -1) {
+        this.notes[index] = {
+          ...this.notes[index],
+          is_shared: data.is_shared,
+          share_uuid: data.note_uuid ?? this.notes[index].share_uuid ?? null,
+        };
+      }
+      return data;
+    },
+    /**
+     * 获取分享笔记内容。
+     */
+    async fetchSharedNote(noteUuid: string, shareUserId: string | number): Promise<SharedNote> {
+      const { data } = await api.get("/notes/share", {
+        params: { note_uuid: noteUuid, share_user_id: shareUserId },
+      });
+      return data;
     },
     async togglePinNote(id: number) {
       const { data } = await api.patch(`/notes/${id}/pin`);

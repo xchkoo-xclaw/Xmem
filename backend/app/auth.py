@@ -15,6 +15,7 @@ from . import models
 from .db import get_session
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_optional = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 def verify_password(password: str, hashed: str) -> bool:
     """校验明文密码与数据库哈希是否匹配。"""
@@ -96,5 +97,24 @@ async def get_current_user(
     user = result.scalars().first()
     if user is None:
         raise credentials_exception
+    return user
+
+
+async def get_optional_user(
+    token: Optional[str] = Depends(oauth2_optional), session: AsyncSession = Depends(get_session)
+) -> Optional[models.User]:
+    """尝试解析可选的登录用户，失败则返回 None。"""
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        user_id: int = int(payload.get("sub"))
+        if user_id is None:
+            return None
+    except JWTError:
+        return None
+
+    result = await session.execute(select(models.User).where(models.User.id == user_id))
+    user = result.scalars().first()
     return user
 

@@ -75,6 +75,11 @@ const router = createRouter({
       props: true
     },
     {
+      path: '/view-share-note',
+      name: 'share-note',
+      component: NoteView
+    },
+    {
       path: '/ledger/:ledgerId',
       name: 'ledger-view',
       component: LedgerView,
@@ -97,6 +102,7 @@ router.beforeEach((to, from, next) => {
   const userStore = useUserStore();
   const ui = useUiStore();
   const isAuthRoute = to.name === 'login' || to.name === 'register';
+  const isShareRoute = to.name === 'share-note';
   const tokenInStorage = localStorage.getItem("token") || "";
 
   if (userStore.token !== tokenInStorage) {
@@ -106,7 +112,7 @@ router.beforeEach((to, from, next) => {
     }
   }
 
-  if (!userStore.token && !isAuthRoute) {
+  if (!userStore.token && !isAuthRoute && !isShareRoute) {
     next({
       name: 'login',
       query: { redirect: to.fullPath },

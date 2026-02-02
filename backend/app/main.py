@@ -107,6 +107,8 @@ async def health():
 
 app.include_router(auth.router)
 
+app.include_router(notes.public_router)
+
 # 其他notes路由需要认证
 app.include_router(notes.router, dependencies=[Depends(get_current_user)])
 
