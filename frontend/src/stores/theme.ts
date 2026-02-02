@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import { useToastStore } from "./toast";
 
 export type ThemeMode = "light" | "dark" | "auto";
 export type ResolvedTheme = "light" | "dark";
@@ -64,6 +65,23 @@ const applyThemeToDom = (resolved: ResolvedTheme) => {
   const root = document.documentElement;
   root.dataset.theme = resolved;
   root.style.colorScheme = resolved;
+};
+
+/**
+ * 获取主题模式的展示文案。
+ */
+const getThemeLabel = (mode: ThemeMode): string => {
+  if (mode === "light") return "白天";
+  if (mode === "dark") return "黑夜";
+  return "跟随系统";
+};
+
+/**
+ * 触发主题切换提示。
+ */
+const notifyThemeChange = (mode: ThemeMode) => {
+  const toast = useToastStore();
+  toast.info(`已切换到${getThemeLabel(mode)}模式`);
 };
 
 export const useThemeStore = defineStore("theme", {
@@ -136,9 +154,18 @@ export const useThemeStore = defineStore("theme", {
      * 切换是否允许“跟随系统”选项。
      */
     setAutoEnabled(enabled: boolean) {
+      const previousMode = this.mode;
       this.autoEnabled = enabled;
-      if (!enabled && this.mode === "auto") {
+      if (enabled) {
+        if (previousMode !== "auto") {
+          this.mode = "auto";
+          notifyThemeChange(this.mode);
+        }
+        return;
+      }
+      if (previousMode === "auto") {
         this.mode = "light";
+        notifyThemeChange(this.mode);
       }
     },
     /**
@@ -146,7 +173,9 @@ export const useThemeStore = defineStore("theme", {
      */
     setMode(mode: ThemeMode) {
       if (mode === "auto" && !this.autoEnabled) return;
+      if (this.mode === mode) return;
       this.mode = mode;
+      notifyThemeChange(this.mode);
     },
     /**
      * 按规则循环切换主题：
@@ -154,20 +183,19 @@ export const useThemeStore = defineStore("theme", {
      * - autoEnabled=false：light ↔ dark
      */
     cycleTheme() {
-      if (this.autoEnabled) {
-        if (this.mode === "light") {
-          this.mode = "dark";
-          return;
-        }
-        if (this.mode === "dark") {
-          this.mode = "auto";
-          return;
-        }
-        this.mode = "light";
-        return;
-      }
+      const nextMode = this.autoEnabled
+        ? this.mode === "light"
+          ? "dark"
+          : this.mode === "dark"
+            ? "auto"
+            : "light"
+        : this.mode === "dark"
+          ? "light"
+          : "dark";
 
-      this.mode = this.mode === "dark" ? "light" : "dark";
+      if (nextMode === this.mode) return;
+      this.mode = nextMode;
+      notifyThemeChange(this.mode);
     },
   },
 });

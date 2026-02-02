@@ -5,16 +5,14 @@
 ### 在追踪的进度
 
     feature: 
-        笔记分享功能
+        笔记分享功能 2026/2/2
 
-    feature：
-        黑夜模式
 
     bug:
         访问https://xmem.top/会跳转到https://xmem.top/login?redirect=/并且卡在加载动画 访问https://xmem.top/login就不会卡住 并且加载动画还是紫色风格 没有改成和项目一直的风格
     
 ### 重构：
-    前端 后端 electron各自划分版本号
+
 ### 大型功能进度：
 
 
@@ -237,3 +235,9 @@
     
     feature:
         替换后端集成测试数据库为testcontainers 修复了github action ci测试的问题
+
+    feature:
+        前端 后端 electron各自划分版本号 2026/2/2
+
+    feature：
+        黑夜模式

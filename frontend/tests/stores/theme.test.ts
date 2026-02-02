@@ -81,12 +81,13 @@ describe("useThemeStore", () => {
     expect(theme.mode).toBe("light");
 
     theme.setAutoEnabled(true);
+    expect(theme.mode).toBe("auto");
+    theme.cycleTheme();
+    expect(theme.mode).toBe("light");
     theme.cycleTheme();
     expect(theme.mode).toBe("dark");
     theme.cycleTheme();
     expect(theme.mode).toBe("auto");
-    theme.cycleTheme();
-    expect(theme.mode).toBe("light");
   });
 
   it("系统主题变化时，auto 模式会实时更新 resolvedTheme 与 DOM", async () => {
