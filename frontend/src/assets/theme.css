@@ -47,3 +47,7 @@ body {
     fill var(--theme-transition-ms) ease,
     stroke var(--theme-transition-ms) ease;
 }
+
+.md-editor-code-head {
+  z-index: 10 !important;
+}

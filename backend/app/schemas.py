@@ -77,6 +77,35 @@ class NoteOut(NoteBase):
         json_encoders = {dt.datetime: _encode_datetime_utc}
 
 
+class NoteShareLinkOut(BaseModel):
+    note_uuid: str
+    share_user_id: int
+    share_url: str
+
+
+class SharedUserOut(BaseModel):
+    id: int
+    email: EmailStr
+    user_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class NoteShareOut(NoteBase):
+    id: int
+    is_pinned: bool = False
+    created_at: dt.datetime
+    updated_at: dt.datetime
+    files: Optional[list[NoteFileOut]] = None
+    share_user: SharedUserOut
+    can_edit: bool = False
+
+    class Config:
+        from_attributes = True
+        json_encoders = {dt.datetime: _encode_datetime_utc}
+
+
 class LedgerCreate(BaseModel):
     text: Optional[str] = None  # 文本输入，如果提供图片则可以为空
 

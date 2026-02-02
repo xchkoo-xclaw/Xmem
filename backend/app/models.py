@@ -31,6 +31,8 @@ class Note(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     body_md = Column(Text, nullable=False)  # Markdown 格式内容
     is_pinned = Column(Boolean, default=False, nullable=False)  # 是否置顶
+    is_shared = Column(Boolean, default=False, nullable=False)  # 是否分享
+    share_uuid = Column(String(64), unique=True, index=True, nullable=True)  # 分享固定UUID
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now) 
 

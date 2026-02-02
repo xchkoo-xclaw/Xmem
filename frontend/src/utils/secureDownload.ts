@@ -11,20 +11,20 @@ export const isSecureResource = (url: string): boolean => {
   
   // 1. 相对路径
   if (url.startsWith("/")) {
-    return url.includes("/notes/files/");
+    return url.includes("/notes/files/") || url.includes("/notes/share-files/");
   }
   
   // 2. 绝对路径
   if (url.startsWith("http")) {
     if (baseURL.startsWith("http")) {
       // 必须匹配配置的 API Base URL
-      return url.startsWith(baseURL) && url.includes("/notes/files/");
+      return url.startsWith(baseURL) && (url.includes("/notes/files/") || url.includes("/notes/share-files/"));
     } else {
       // 如果 baseURL 是相对路径 (e.g. /api)，检查是否匹配当前 origin + baseURL
       const currentOrigin = window.location.origin;
       if (url.startsWith(currentOrigin)) {
         const path = url.substring(currentOrigin.length);
-        return path.startsWith(baseURL) && path.includes("/notes/files/");
+        return path.startsWith(baseURL) && (path.includes("/notes/files/") || path.includes("/notes/share-files/"));
       }
     }
   }

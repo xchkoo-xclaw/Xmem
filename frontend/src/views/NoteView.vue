@@ -3,7 +3,7 @@
     <header class="w-full max-w-4xl mx-auto px-4 pt-8 pb-4 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <button
-          @click="router.back()"
+          @click="handleBack()"
           class="btn ghost flex items-center gap-2"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -14,7 +14,8 @@
         <div class="text-xl font-bold">查看笔记</div>
       </div>
       <button
-        @click="router.push({ name: 'editor', params: { noteId: props.noteId } })"
+        v-if="canEdit"
+        @click="handleEdit"
         class="btn primary flex items-center gap-2"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -25,18 +26,31 @@
     </header>
 
     <main class="w-full max-w-4xl mx-auto px-4 pb-20">
-      <div v-if="note" class="bg-surface border border-border rounded-3xl shadow-card p-4 md:p-6 lg:p-8 mx-auto">
+      <div v-if="displayedNote" class="bg-surface border border-border rounded-3xl shadow-card p-4 md:p-6 lg:p-8 mx-auto">
         <!-- 笔记内容 -->
-        <div class="mb-6" @dblclick="router.push({ name: 'editor', params: { noteId: props.noteId } })">
-           <MdPreview v-secure-display :modelValue="note.body_md || ''" :theme="theme.resolvedTheme" />
+        <div class="mb-6" @dblclick="handleEdit">
+           <MdPreview v-secure-display :modelValue="displayedNote.body_md || ''" :theme="theme.resolvedTheme" />
         </div>
 
         <!-- 笔记信息 -->
         <div class="border-t border-border pt-4 flex items-center justify-between">
-          <div class="text-xs text-muted">
-            创建时间：{{ formatTime(note.created_at) }}
+          <div class="text-xs text-muted space-y-1">
+            <div>创建时间：{{ formatTime(displayedNote.created_at) }}</div>
+            <div v-if="isShareView && shareOwnerName">分享人：{{ shareOwnerName }}</div>
           </div>
           <div class="flex items-center gap-2">
+            <button
+              v-if="!isShareView"
+              @click="handleShare"
+              class="btn ghost text-sm"
+              title="生成分享链接"
+              aria-label="分享"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1 max-[420px]:mr-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C9.886 14.534 11.657 15.25 13.5 15.25c2.761 0 5-1.567 5-3.5s-2.239-3.5-5-3.5c-1.843 0-3.614.716-4.816 1.908M15.316 10.658C14.114 9.466 12.343 8.75 10.5 8.75c-2.761 0-5 1.567-5 3.5s2.239 3.5 5 3.5c1.843 0 3.614-.716 4.816-1.908" />
+              </svg>
+              <span class="max-[420px]:hidden">分享</span>
+            </button>
             <button
               @click="copyNoteText"
               class="btn ghost text-sm"
@@ -49,6 +63,7 @@
               <span class="max-[420px]:hidden">复制</span>
             </button>
             <button
+              v-if="canEdit"
               @click="handleDelete"
               class="btn ghost text-sm text-red-500 hover:text-red-700"
               title="删除笔记"
@@ -63,7 +78,7 @@
         </div>
       </div>
       <div v-else class="bg-surface border border-border rounded-3xl shadow-card p-4 md:p-6 lg:p-8 mx-auto text-center">
-        <p class="text-muted text-lg">笔记不存在</p>
+        <p class="text-muted text-lg">{{ emptyMessage }}</p>
       </div>
     </main>
     
@@ -82,19 +97,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { MdPreview } from 'md-editor-v3';
 import 'md-editor-v3/lib/style.css';
-import { useDataStore } from "../stores/data";
+import { useDataStore, type SharedNote } from "../stores/data";
 import { useToastStore } from "../stores/toast";
 import { useConfirmStore } from "../stores/confirm";
 import { usePreferencesStore } from "../stores/preferences";
 import { useThemeStore } from "../stores/theme";
 import ConfirmDialog from "../components/ConfirmDialog.vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { toPlainTextFromMarkdown } from "../utils/markdown";
 
 const router = useRouter()
+const route = useRoute()
 
 interface Props {
   noteId: number | string | null;
@@ -121,18 +137,69 @@ const note = computed(() => {
   return data.notes.find(n => n.id === id);
 });
 
+const sharedNote = ref<SharedNote | null>(null);
+const shareError = ref("");
+
+const isShareView = computed(() => route.name === "share-note");
+const shareNoteUuid = computed(() => (route.query["note-uuid"] as string | undefined) ?? "");
+const shareUserId = computed(() => (route.query["share-user-id"] as string | undefined) ?? "");
+
+const displayedNote = computed(() => (isShareView.value ? sharedNote.value : note.value));
+const canEdit = computed(() => (!isShareView.value ? true : sharedNote.value?.can_edit === true));
+const activeNoteId = computed(() => displayedNote.value?.id ?? null);
+const shareOwnerName = computed(() => {
+  const user = sharedNote.value?.share_user;
+  if (!user) return "";
+  return user.user_name || user.email;
+});
+const emptyMessage = computed(() => {
+  if (!isShareView.value) return "笔记不存在";
+  return shareError.value || "笔记不存在或未分享";
+});
+
+const handleBack = () => {
+  if (isShareView.value) router.push("/");
+  else  router.back();
+};
+
 // 格式化时间
 const formatTime = (timeStr: string) => {
   const date = new Date(timeStr);
   return date.toLocaleString();
 };
 
+/**
+ * 加载分享笔记内容。
+ */
+const loadSharedNote = async () => {
+  if (!isShareView.value) return;
+  if (!shareNoteUuid.value || !shareUserId.value) {
+    sharedNote.value = null;
+    shareError.value = "分享链接不完整";
+    return;
+  }
+
+  try {
+    shareError.value = "";
+    sharedNote.value = await data.fetchSharedNote(shareNoteUuid.value, shareUserId.value);
+  } catch (error: any) {
+    sharedNote.value = null;
+    shareError.value = error.response?.data?.detail || "笔记不存在或未分享";
+  }
+};
+
+watch([shareNoteUuid, shareUserId, isShareView], () => {
+  if (isShareView.value) {
+    loadSharedNote();
+  }
+}, { immediate: true });
+
 // 复制笔记文本
 const copyNoteText = async () => {
-  if (!note.value || !note.value.body_md) return;
+  if (!displayedNote.value || !displayedNote.value.body_md) return;
   
   try {
-    const content = note.value.body_md;
+    const content = displayedNote.value.body_md;
     const text =
       preferences.noteCopyFormat === "plain"
         ? toPlainTextFromMarkdown(content)
@@ -145,9 +212,38 @@ const copyNoteText = async () => {
   }
 };
 
+/**
+ * 进入编辑页。
+ */
+const handleEdit = () => {
+  if (!canEdit.value) return;
+  if (!activeNoteId.value) return;
+  router.push({ name: "editor", params: { noteId: activeNoteId.value } });
+};
+
+/**
+ * 生成分享链接并复制。
+ */
+const handleShare = async () => {
+  if (!activeNoteId.value) return;
+  try {
+    const shareInfo = await data.generateNoteShareLink(Number(activeNoteId.value));
+    const localBase = window.location.origin;
+    const fallbackUrl = `${localBase}/view-share-note/?note-uuid=${shareInfo.note_uuid}&share-user-id=${shareInfo.share_user_id}`;
+    const shareUrl = shareInfo.share_url && shareInfo.share_url.startsWith(localBase)
+      ? shareInfo.share_url
+      : fallbackUrl;
+    await navigator.clipboard.writeText(shareUrl);
+    toast.success("分享链接已复制");
+  } catch (error: any) {
+    toast.error(error.response?.data?.detail || "生成分享链接失败");
+  }
+};
+
 // 删除笔记
 const handleDelete = () => {
-  if (!props.noteId) return;
+  if (!canEdit.value) return;
+  if (!activeNoteId.value) return;
   
   confirm.show({
     title: "删除笔记",
@@ -157,7 +253,7 @@ const handleDelete = () => {
   }).then(async (result) => {
     if (result) {
       try {
-        await data.removeNote(Number(props.noteId));
+        await data.removeNote(Number(activeNoteId.value));
         toast.success("笔记删除成功");
         emit("deleted");
         router.back();
