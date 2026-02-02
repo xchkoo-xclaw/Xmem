@@ -4,6 +4,7 @@ import api from "../api/client";
 export interface Note {
   id: number;
   body_md: string;
+  ai_summary?: string | null;
   images?: string[] | null;
   files?: Array<{ name: string; url: string; size: number }> | null;
   attachment_url?: string;

@@ -415,6 +415,75 @@ class TestShareNotes:
             app.dependency_overrides.clear()
 
 
+class TestNoteAi:
+    def test_note_ai_summary(self, client, mock_user, mock_token, mock_note):
+        async def override_get_current_user():
+            return mock_user
+
+        async def override_get_session():
+            mock_session = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.scalars.return_value.first.return_value = mock_note
+            mock_session.execute = AsyncMock(return_value=mock_result)
+            yield mock_session
+
+        app.dependency_overrides[get_current_user] = override_get_current_user
+        app.dependency_overrides[get_session] = override_get_session
+
+        try:
+            with patch("app.routers.notes.generate_note_summary", return_value="AI 总结内容"):
+                response = client.post(
+                    "/notes/1/ai-summary",
+                    headers={"Authorization": f"Bearer {mock_token}"}
+                )
+            assert response.status_code == 200
+            data = response.json()
+            assert data["summary"] == "AI 总结内容"
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_note_ai_todos(self, client, mock_user, mock_token, mock_note):
+        async def override_get_current_user():
+            return mock_user
+
+        async def override_get_session():
+            mock_session = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.scalars.return_value.first.return_value = mock_note
+            mock_session.execute = AsyncMock(return_value=mock_result)
+            mock_session.add_all = MagicMock()
+            mock_session.commit = AsyncMock()
+            counter = {"id": 1}
+
+            async def mock_refresh(obj):
+                if getattr(obj, "id", None) is None:
+                    obj.id = counter["id"]
+                    counter["id"] += 1
+                if getattr(obj, "created_at", None) is None:
+                    obj.created_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+            mock_session.refresh = AsyncMock(side_effect=mock_refresh)
+            yield mock_session
+
+        app.dependency_overrides[get_current_user] = override_get_current_user
+        app.dependency_overrides[get_session] = override_get_session
+
+        try:
+            with patch("app.routers.notes.generate_note_todos", return_value=["待办A", "待办B"]):
+                response = client.post(
+                    "/notes/1/ai-todos",
+                    headers={"Authorization": f"Bearer {mock_token}"}
+                )
+            assert response.status_code == 200
+            data = response.json()
+            assert len(data["todos"]) == 3
+            assert data["todos"][0]["title"] == "AI 待办"
+            assert data["todos"][0]["is_ai_generated"] is True
+            assert data["todos"][1]["group_id"] == data["todos"][0]["id"]
+        finally:
+            app.dependency_overrides.clear()
+
+
 # ========== 测试上传图片 ==========
 
 class TestUploadImage:

@@ -3,19 +3,20 @@
         Capacitor
 
 ### 在追踪的进度
+    feature:
+        笔记ai总结 
+        
+        笔记ai转代办功能
 
     bug:
         访问https://xmem.top/会跳转到https://xmem.top/login?redirect=/并且卡在加载动画 访问https://xmem.top/login就不会卡住 并且加载动画还是紫色风格 没有改成和项目一直的风格
-    
+
 ### 重构：
 
 ### 大型功能进度：
 
 
 ### 需要更新的功能和fix：
-
-    feature:
-        笔记ai总结 笔记ai转代办功能
 
     feature:
         记账统计更多的图表 日历功能 ai总结功能
