@@ -23,7 +23,24 @@
     
     <!-- 时间和操作按钮 -->
     <div class="text-xs text-muted mt-2 absolute bottom-2 left-4 flex items-center gap-2">
-      <span v-if="note.is_pinned" class="text-yellow-500" title="已置顶">📌</span>
+      <span v-if="note.is_pinned" class="inline-flex items-center gap-1 text-yellow-500/70" title="已置顶">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+        </svg>
+        <span v-if="showStatusText" class="text-[10px]">置顶</span>
+      </span>
+      <span v-if="note.ai_summary" class="inline-flex items-center gap-1 text-purple-400/70" title="含 AI 总结">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l1.8 4.8L19 9l-4.2 2.7L16 16l-4-2.6L8 16l1.2-4.3L5 9l5.2-1.2L12 3z" />
+        </svg>
+        <span v-if="showStatusText" class="text-[10px]">AI</span>
+      </span>
+      <span v-if="note.is_shared" class="inline-flex items-center gap-1 text-emerald-400/70" title="已分享">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12a4 4 0 014-4h4m4 8a4 4 0 01-4 4H8m0-12h4m0 0V4m0 4v8" />
+        </svg>
+        <span v-if="showStatusText" class="text-[10px]">分享</span>
+      </span>
       <span>{{ formatTime(note.created_at) }}</span>
     </div>
     <div class="absolute bottom-2 right-2 flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
@@ -93,6 +110,12 @@ const displayContent = computed(() => {
   
   return content.replace(regex, '<mark class="bg-yellow-300/40 text-text px-0.5 rounded">$1</mark>');
 });
+
+const statusCount = computed(() => {
+  return Number(!!props.note.is_pinned) + Number(!!props.note.ai_summary) + Number(!!props.note.is_shared);
+});
+
+const showStatusText = computed(() => statusCount.value <= 1);
 
 // 判断笔记是否需要折叠
 const isCollapsed = ref(false);

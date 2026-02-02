@@ -1,6 +1,6 @@
 <template>
   <div
-    class="rounded-xl shadow-card overflow-hidden border"
+    class="rounded-xl shadow-card overflow-hidden border relative"
     :class="todo.is_pinned ? 'bg-yellow-500/10 border-yellow-500/50' : 'bg-surface border-border'"
   >
     <!-- 组标题栏 -->
@@ -12,6 +12,11 @@
           @change="$emit('toggle', todo.id)" 
           class="flex-shrink-0 cursor-pointer"
         />
+        <span v-if="todo.is_ai_generated" class="text-muted flex-shrink-0" title="AI生成">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l1.8 4.8L19 9l-4.2 2.7L16 16l-4-2.6L8 16l1.2-4.3L5 9l5.2-1.2L12 3z" />
+          </svg>
+        </span>
         
         <!-- 置顶图标（始终显示） -->
         <span v-if="todo.is_pinned" class="text-yellow-500 flex-shrink-0" title="已置顶">
@@ -83,7 +88,7 @@
       <div
         v-for="item in sortedGroupItems"
         :key="item.id"
-        class="flex items-center gap-3 bg-surface px-3 py-2 rounded-lg min-h-[40px] group/item border border-border"
+        class="flex items-center gap-3 bg-surface px-3 py-2 rounded-lg min-h-[40px] group/item border border-border relative"
       >
         <input 
           type="checkbox" 
@@ -91,6 +96,11 @@
           @change="$emit('toggle-item', item.id)" 
           class="flex-shrink-0 cursor-pointer"
         />
+        <span v-if="item.is_ai_generated" class="text-muted flex-shrink-0" title="AI生成">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l1.8 4.8L19 9l-4.2 2.7L16 16l-4-2.6L8 16l1.2-4.3L5 9l5.2-1.2L12 3z" />
+          </svg>
+        </span>
         <input
           v-model="editingItems[item.id]"
           @blur="finishEditItem(item.id)"

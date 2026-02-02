@@ -53,6 +53,10 @@
                 <span class="max-[420px]:hidden">分享</span>
                 <span class="ml-1">{{ shareEnabled ? "公开" : "私密" }}</span>
               </button>
+              <div
+                v-if="shareEnabled && shareLink"
+                class="h-px w-3 bg-border opacity-60 -mx-1"
+              ></div>
               <button
                 v-if="shareEnabled && shareLink"
                 @click="handleCopyShareLink"
@@ -64,6 +68,20 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
                 <span class="max-[420px]:hidden">复制链接</span>
+              </button>
+            </div>
+            <div v-if="!isShareView && canEdit" class="flex items-center gap-2">
+              <div class="h-4 w-px bg-border/70"></div>
+              <button
+                @click="toggleAiPanel"
+                class="btn ghost text-sm"
+                title="AI 功能"
+                aria-label="AI 功能"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1 max-[420px]:mr-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l2.09 6.26L20 9l-5 3.74L16.18 19 12 15.77 7.82 19 9 12.74 4 9l5.91-.74L12 3z" />
+                </svg>
+                <span class="max-[420px]:hidden">AI</span>
               </button>
             </div>
             <button
@@ -91,10 +109,75 @@
             </button>
           </div>
         </div>
+        <div
+          v-if="aiPanelOpen && !isShareView && canEdit"
+          class="mt-4 rounded-2xl border border-border bg-surface2 p-3"
+        >
+          <div class="text-xs text-muted mb-2">AI 功能</div>
+          <div class="grid gap-2">
+            <button
+              @click="handleAiSummary"
+              class="btn ghost w-full text-left text-sm"
+              :disabled="aiSummaryLoading"
+            >
+              <span class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m-6-8h6m-4-6a2 2 0 00-2 2v2H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V6a2 2 0 00-2-2h-4V2a2 2 0 00-2-2z" />
+                </svg>
+                <span>{{ aiSummaryLoading ? "总结中..." : "AI 总结" }}</span>
+              </span>
+            </button>
+            <button
+              @click="handleAiTodos"
+              class="btn ghost w-full text-left text-sm"
+              :disabled="aiTodosLoading"
+            >
+              <span class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5h6m-6 7h6m-6 7h6M5 6l1 1 2-2M5 13l1 1 2-2M5 20l1 1 2-2" />
+                </svg>
+                <span>{{ aiTodosLoading ? "生成中..." : "转待办" }}</span>
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
       <div v-else class="bg-surface border border-border rounded-3xl shadow-card p-4 md:p-6 lg:p-8 mx-auto text-center">
         <p class="text-muted text-lg">{{ emptyMessage }}</p>
       </div>
+      <transition name="fade-soft">
+        <div
+          v-if="(aiSummaryLoading || aiSummary) && !isShareView"
+          class="bg-surface border border-border rounded-3xl shadow-card p-4 md:p-6 lg:p-8 mx-auto mt-4 relative overflow-hidden group"
+          :class="{ 'ai-loading': aiSummaryLoading }"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <div class="text-sm font-semibold text-text">AI 总结</div>
+          </div>
+          <div v-if="aiSummaryLoading" class="space-y-2">
+            <div class="ai-skeleton-line w-3/4"></div>
+            <div class="ai-skeleton-line w-2/3"></div>
+            <div class="ai-skeleton-line w-1/2"></div>
+          </div>
+          <div v-else class="mb-2">
+            <MdPreview v-secure-display :modelValue="aiSummary" :theme="theme.resolvedTheme" />
+          </div>
+          <div v-if="aiSummary" class="absolute bottom-3 left-4 text-[10px] text-muted">
+            AI生成
+          </div>
+          <button
+            v-if="aiSummary"
+            @click="copyAiSummary"
+            class="ai-copy-btn absolute bottom-2 right-3"
+            title="复制总结"
+            aria-label="复制总结"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </button>
+        </div>
+      </transition>
     </main>
     
     <!-- 确认对话框 -->
@@ -112,7 +195,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, onMounted } from "vue";
 import { MdPreview } from 'md-editor-v3';
 import 'md-editor-v3/lib/style.css';
 import { useDataStore, type SharedNote } from "../stores/data";
@@ -166,13 +249,18 @@ const canEdit = computed(() => (!isShareView.value ? true : sharedNote.value?.ca
 const activeNoteId = computed(() => displayedNote.value?.id ?? null);
 const shareEnabled = ref(false);
 const shareLinkOverride = ref("");
+const aiPanelOpen = ref(false);
+const aiSummary = ref("");
+const aiSummaryLoading = ref(false);
+const aiTodosLoading = ref(false);
+const noteLoading = ref(false);
 const shareOwnerName = computed(() => {
   const user = sharedNote.value?.share_user;
   if (!user) return "";
   return user.user_name || user.email;
 });
 const emptyMessage = computed(() => {
-  if (!isShareView.value) return "笔记不存在";
+  if (!isShareView.value) return noteLoading.value ? "笔记加载中..." : "笔记不存在";
   return shareError.value || "笔记不存在或未分享";
 });
 
@@ -222,12 +310,34 @@ watch([shareNoteUuid, shareUserId, isShareView], () => {
   }
 }, { immediate: true });
 
+const ensureNoteLoaded = async () => {
+  if (isShareView.value) return;
+  if (!props.noteId) return;
+  if (note.value) return;
+  noteLoading.value = true;
+  try {
+    await data.fetchNotes();
+  } finally {
+    noteLoading.value = false;
+  }
+};
+
+onMounted(() => {
+  ensureNoteLoaded();
+});
+
+watch(() => props.noteId, () => {
+  ensureNoteLoaded();
+});
+
 watch(note, () => {
   if (!note.value) return;
   shareEnabled.value = !!note.value.is_shared;
   if (!shareEnabled.value) {
     shareLinkOverride.value = "";
   }
+  aiSummary.value = note.value.ai_summary || "";
+  aiPanelOpen.value = false;
 }, { immediate: true });
 
 // 复制笔记文本
@@ -275,6 +385,7 @@ const handleShareToggle = async (nextValue: boolean) => {
       shareLinkOverride.value = "";
       toast.success("分享已关闭");
     }
+    await data.fetchNotes();
   } catch (error: any) {
     shareEnabled.value = !nextValue;
     toast.error(error.response?.data?.detail || "切换分享状态失败");
@@ -288,6 +399,66 @@ const handleCopyShareLink = async () => {
     toast.success("分享链接已复制");
   } catch {
     toast.error("复制分享链接失败");
+  }
+};
+
+const toggleAiPanel = () => {
+  aiPanelOpen.value = !aiPanelOpen.value;
+};
+
+const handleAiSummary = async () => {
+  if (!activeNoteId.value) return;
+  aiSummaryLoading.value = true;
+  try {
+    const result = await data.generateNoteAiSummary(Number(activeNoteId.value));
+    aiSummary.value = result.summary;
+    const index = data.notes.findIndex(n => n.id === Number(activeNoteId.value));
+    if (index !== -1) {
+      data.notes[index] = {
+        ...data.notes[index],
+        ai_summary: result.summary,
+      };
+    }
+    aiPanelOpen.value = false;
+    toast.success("AI 总结已生成");
+  } catch (error: any) {
+    toast.error(error.response?.data?.detail || "AI 总结失败");
+  } finally {
+    aiSummaryLoading.value = false;
+  }
+};
+
+const handleAiTodos = async () => {
+  if (!activeNoteId.value) return;
+  aiTodosLoading.value = true;
+  try {
+    const result = await data.generateNoteAiTodos(Number(activeNoteId.value));
+    aiPanelOpen.value = false;
+    if (result.todos.length === 0) {
+      toast.info("未识别到待办");
+    } else {
+      await data.fetchTodos(false);
+      toast.success("AI 待办已生成");
+    }
+  } catch (error: any) {
+    toast.error(error.response?.data?.detail || "AI 待办生成失败");
+  } finally {
+    aiTodosLoading.value = false;
+  }
+};
+
+const copyAiSummary = async () => {
+  if (!aiSummary.value) return;
+  try {
+    const text =
+      preferences.noteCopyFormat === "plain"
+        ? toPlainTextFromMarkdown(aiSummary.value)
+        : aiSummary.value.trim();
+    await navigator.clipboard.writeText(text);
+    toast.success("总结已复制");
+  } catch (err) {
+    console.error("复制失败:", err);
+    toast.error("复制失败，请手动复制");
   }
 };
 
@@ -334,5 +505,62 @@ const handleDelete = () => {
 }
 .btn.ghost {
   @apply bg-surface text-text border border-border hover:border-border/70;
+}
+
+.fade-soft-enter-active,
+.fade-soft-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.fade-soft-enter-from,
+.fade-soft-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.ai-skeleton-line {
+  @apply h-3 rounded-full bg-surface2;
+}
+
+.ai-loading {
+  border-color: rgb(255, 90, 180);
+  box-shadow: 0 0 18px rgba(255, 90, 180, 0.4);
+  animation: ai-rgb-pulse 2.4s ease-in-out infinite;
+}
+
+.ai-copy-btn {
+  @apply p-1 rounded-md text-muted transition-all opacity-0;
+}
+
+.ai-copy-btn svg {
+  @apply h-3.5 w-3.5;
+}
+
+.group:hover .ai-copy-btn {
+  @apply text-text opacity-100;
+}
+
+@media (hover: none) {
+  .ai-copy-btn {
+    @apply text-text opacity-100;
+  }
+}
+
+@keyframes ai-rgb-pulse {
+  0% {
+    border-color: rgb(255, 90, 180);
+    box-shadow: 0 0 18px rgba(255, 90, 180, 0.45);
+  }
+  33% {
+    border-color: rgb(90, 170, 255);
+    box-shadow: 0 0 18px rgba(90, 170, 255, 0.45);
+  }
+  66% {
+    border-color: rgb(120, 255, 150);
+    box-shadow: 0 0 18px rgba(120, 255, 150, 0.45);
+  }
+  100% {
+    border-color: rgb(255, 90, 180);
+    box-shadow: 0 0 18px rgba(255, 90, 180, 0.45);
+  }
 }
 </style>

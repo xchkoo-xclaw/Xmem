@@ -13,6 +13,7 @@ from .. import models, schemas
 from ..db import get_session
 from ..auth import get_current_user, get_optional_user
 from ..utils.file_utils import save_uploaded_img, save_uploaded_file
+from ..services.ai import generate_note_summary, generate_note_todos
 
 router = APIRouter(prefix="/notes", tags=["notes"])
 public_router = APIRouter(prefix="/notes", tags=["notes"])
@@ -87,6 +88,7 @@ def build_note_out(note: models.Note) -> schemas.NoteOut:
     return schemas.NoteOut(
         id=note.id,
         body_md=note.body_md,
+        ai_summary=getattr(note, "ai_summary", None),
         is_pinned=bool(note.is_pinned),
         is_shared=bool(getattr(note, "is_shared", False)),
         share_uuid=getattr(note, "share_uuid", None),
@@ -94,6 +96,19 @@ def build_note_out(note: models.Note) -> schemas.NoteOut:
         updated_at=note.updated_at,
         images=extract_referenced_image_urls(note.body_md),
         files=None,
+    )
+
+
+def build_todo_out(todo: models.Todo) -> schemas.TodoOut:
+    return schemas.TodoOut(
+        id=todo.id,
+        title=todo.title,
+        completed=bool(todo.completed),
+        is_pinned=bool(todo.is_pinned),
+        is_ai_generated=bool(getattr(todo, "is_ai_generated", False)),
+        group_id=todo.group_id,
+        created_at=todo.created_at,
+        group_items=None,
     )
 
 
@@ -116,6 +131,7 @@ def build_share_note_out(
     return schemas.NoteShareOut(
         id=note.id,
         body_md=shared_body,
+        ai_summary=getattr(note, "ai_summary", None),
         is_pinned=bool(note.is_pinned),
         created_at=note.created_at,
         updated_at=note.updated_at,
@@ -547,3 +563,77 @@ async def toggle_pin_note(
     await session.commit()
     await session.refresh(note)
     return build_note_out(note)
+
+
+@router.post("/{note_id}/ai-summary", response_model=schemas.NoteAiSummaryOut)
+async def ai_note_summary(
+    note_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: models.User = Depends(get_current_user),
+):
+    result = await session.execute(
+        select(models.Note).where(models.Note.id == note_id, models.Note.user_id == current_user.id)
+    )
+    note = result.scalars().first()
+    if not note:
+        raise HTTPException(status_code=404, detail="笔记不存在")
+    if not note.body_md or not note.body_md.strip():
+        raise HTTPException(status_code=400, detail="笔记内容不能为空")
+    try:
+        summary = generate_note_summary(note.body_md)
+        note.ai_summary = summary
+        await session.commit()
+        await session.refresh(note)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI 总结失败: {str(e)}") from e
+    return schemas.NoteAiSummaryOut(summary=summary)
+
+
+@router.post("/{note_id}/ai-todos", response_model=schemas.NoteAiTodosOut)
+async def ai_note_todos(
+    note_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: models.User = Depends(get_current_user),
+):
+    result = await session.execute(
+        select(models.Note).where(models.Note.id == note_id, models.Note.user_id == current_user.id)
+    )
+    note = result.scalars().first()
+    if not note:
+        raise HTTPException(status_code=404, detail="笔记不存在")
+    if not note.body_md or not note.body_md.strip():
+        raise HTTPException(status_code=400, detail="笔记内容不能为空")
+    try:
+        titles = generate_note_todos(note.body_md)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI 待办生成失败: {str(e)}") from e
+    if not titles:
+        return schemas.NoteAiTodosOut(todos=[])
+
+    group = models.Todo(
+        user_id=current_user.id,
+        title="AI 待办",
+        is_ai_generated=True,
+    )
+    session.add(group)
+    await session.commit()
+    await session.refresh(group)
+
+    todos: list[models.Todo] = []
+    for title in titles:
+        todo = models.Todo(
+            user_id=current_user.id,
+            title=title,
+            group_id=group.id,
+            is_ai_generated=True,
+        )
+        todos.append(todo)
+    session.add_all(todos)
+    await session.commit()
+    for todo in todos:
+        await session.refresh(todo)
+    return schemas.NoteAiTodosOut(todos=[build_todo_out(group), *[build_todo_out(todo) for todo in todos]])

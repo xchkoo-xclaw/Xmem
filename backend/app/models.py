@@ -30,6 +30,7 @@ class Note(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     body_md = Column(Text, nullable=False)  # Markdown 格式内容
+    ai_summary = Column(Text, nullable=True)
     is_pinned = Column(Boolean, default=False, nullable=False)  # 是否置顶
     is_shared = Column(Boolean, default=False, nullable=False)  # 是否分享
     share_uuid = Column(String(64), unique=True, index=True, nullable=True)  # 分享固定UUID
@@ -83,6 +84,7 @@ class Todo(Base):
     title = Column(String(255), nullable=False)
     completed = Column(Boolean, default=False)
     is_pinned = Column(Boolean, default=False, nullable=False)  # 是否置顶
+    is_ai_generated = Column(Boolean, default=False, nullable=False)
     group_id = Column(Integer, ForeignKey("todos.id"), nullable=True)  # 组ID，指向组标题待办（自引用）
     created_at = Column(DateTime, default=utc_now)
 

@@ -22,6 +22,7 @@ def _todo_out(todo: models.Todo, group_items: list[schemas.TodoOut] | None = Non
         title=todo.title,
         completed=_to_bool(todo.completed),
         is_pinned=_to_bool(todo.is_pinned),
+        is_ai_generated=_to_bool(getattr(todo, "is_ai_generated", False)),
         group_id=todo.group_id,
         created_at=todo.created_at,
         group_items=group_items,
@@ -127,7 +128,8 @@ async def create_todo(
     todo = models.Todo(
         user_id=current_user.id, 
         title=payload.title,
-        group_id=payload.group_id
+        group_id=payload.group_id,
+        is_ai_generated=payload.is_ai_generated
     )
     session.add(todo)
     await session.commit()

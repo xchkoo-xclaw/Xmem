@@ -67,6 +67,7 @@ class NoteCreate(NoteBase):
 
 class NoteOut(NoteBase):
     id: int
+    ai_summary: Optional[str] = None
     is_pinned: bool = False
     is_shared: bool = False
     share_uuid: Optional[str] = None
@@ -96,6 +97,14 @@ class NoteShareStatusOut(BaseModel):
     share_url: Optional[str] = None
 
 
+class NoteAiSummaryOut(BaseModel):
+    summary: str
+
+
+class NoteAiTodosOut(BaseModel):
+    todos: list["TodoOut"]
+
+
 class SharedUserOut(BaseModel):
     id: int
     email: EmailStr
@@ -107,6 +116,7 @@ class SharedUserOut(BaseModel):
 
 class NoteShareOut(NoteBase):
     id: int
+    ai_summary: Optional[str] = None
     is_pinned: bool = False
     created_at: dt.datetime
     updated_at: dt.datetime
@@ -155,6 +165,7 @@ class LedgerOut(BaseModel):
 class TodoCreate(BaseModel):
     title: str
     group_id: Optional[int] = None
+    is_ai_generated: bool = False
 
 
 class TodoUpdate(BaseModel):
@@ -167,6 +178,7 @@ class TodoOut(BaseModel):
     title: str
     completed: bool
     is_pinned: bool = False
+    is_ai_generated: bool = False
     group_id: Optional[int] = None
     created_at: dt.datetime
     # 组的子待办列表（如果这是组标题）
