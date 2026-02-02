@@ -88,6 +88,8 @@ def build_note_out(note: models.Note) -> schemas.NoteOut:
         id=note.id,
         body_md=note.body_md,
         is_pinned=bool(note.is_pinned),
+        is_shared=bool(getattr(note, "is_shared", False)),
+        share_uuid=getattr(note, "share_uuid", None),
         created_at=note.created_at,
         updated_at=note.updated_at,
         images=extract_referenced_image_urls(note.body_md),
@@ -359,6 +361,46 @@ async def share_note(
         share_user_id=current_user.id,
         share_url=build_share_link(note.share_uuid, current_user.id, request),
     )
+
+
+@router.patch("/{note_id}/share-toggle", response_model=schemas.NoteShareStatusOut)
+async def toggle_share_note(
+    note_id: int,
+    payload: schemas.NoteShareToggleIn,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: models.User = Depends(get_current_user),
+):
+    """切换笔记分享状态：公开/私密。"""
+    result = await session.execute(
+        select(models.Note).where(models.Note.id == note_id, models.Note.user_id == current_user.id)
+    )
+    note = result.scalars().first()
+    if not note:
+        raise HTTPException(status_code=404, detail="笔记不存在")
+
+    if payload.is_shared:
+        if not note.share_uuid:
+            note.share_uuid = uuid.uuid4().hex
+        note.is_shared = True
+        await session.commit()
+        await session.refresh(note)
+        return schemas.NoteShareStatusOut(
+            is_shared=True,
+            note_uuid=note.share_uuid,
+            share_user_id=current_user.id,
+            share_url=build_share_link(note.share_uuid, current_user.id, request),
+        )
+    else:
+        note.is_shared = False
+        await session.commit()
+        await session.refresh(note)
+        return schemas.NoteShareStatusOut(
+            is_shared=False,
+            note_uuid=note.share_uuid,
+            share_user_id=current_user.id,
+            share_url=None,
+        )
 
 
 @public_router.get("/share", response_model=schemas.NoteShareOut)

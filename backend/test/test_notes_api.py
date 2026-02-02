@@ -373,6 +373,47 @@ class TestShareNotes:
         finally:
             app.dependency_overrides.clear()
 
+    def test_toggle_share_status(self, client, mock_user, mock_token, mock_note):
+        """测试切换分享状态"""
+        async def override_get_current_user():
+            return mock_user
+
+        async def override_get_session():
+            mock_note.share_uuid = None
+            mock_note.is_shared = False
+            mock_session = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.scalars.return_value.first.return_value = mock_note
+            mock_session.execute = AsyncMock(return_value=mock_result)
+            mock_session.commit = AsyncMock()
+            mock_session.refresh = AsyncMock()
+            yield mock_session
+
+        app.dependency_overrides[get_current_user] = override_get_current_user
+        app.dependency_overrides[get_session] = override_get_session
+
+        try:
+            response = client.patch(
+                "/notes/1/share-toggle",
+                json={"is_shared": True},
+                headers={"Authorization": f"Bearer {mock_token}"}
+            )
+            assert response.status_code == 200
+            data = response.json()
+            assert data["is_shared"] is True
+            assert data["note_uuid"]
+
+            response = client.patch(
+                "/notes/1/share-toggle",
+                json={"is_shared": False},
+                headers={"Authorization": f"Bearer {mock_token}"}
+            )
+            assert response.status_code == 200
+            data = response.json()
+            assert data["is_shared"] is False
+        finally:
+            app.dependency_overrides.clear()
+
 
 # ========== 测试上传图片 ==========
 

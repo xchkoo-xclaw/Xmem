@@ -68,6 +68,8 @@ class NoteCreate(NoteBase):
 class NoteOut(NoteBase):
     id: int
     is_pinned: bool = False
+    is_shared: bool = False
+    share_uuid: Optional[str] = None
     created_at: dt.datetime
     updated_at: dt.datetime
     files: Optional[list[NoteFileOut]] = None
@@ -81,6 +83,17 @@ class NoteShareLinkOut(BaseModel):
     note_uuid: str
     share_user_id: int
     share_url: str
+
+
+class NoteShareToggleIn(BaseModel):
+    is_shared: bool
+
+
+class NoteShareStatusOut(BaseModel):
+    is_shared: bool
+    note_uuid: Optional[str] = None
+    share_user_id: int
+    share_url: Optional[str] = None
 
 
 class SharedUserOut(BaseModel):

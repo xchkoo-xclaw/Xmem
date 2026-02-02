@@ -8,6 +8,8 @@ export interface Note {
   files?: Array<{ name: string; url: string; size: number }> | null;
   attachment_url?: string;
   is_pinned?: boolean;
+  is_shared?: boolean;
+  share_uuid?: string | null;
   created_at: string;
 }
 
@@ -27,6 +29,13 @@ export interface SharedNote {
   updated_at: string;
   share_user: SharedNoteUser;
   can_edit: boolean;
+}
+
+export interface NoteShareStatus {
+  is_shared: boolean;
+  note_uuid?: string | null;
+  share_user_id: number;
+  share_url?: string | null;
 }
 
 export interface LedgerEntry {
@@ -420,6 +429,21 @@ export const useDataStore = defineStore("data", {
      */
     async generateNoteShareLink(id: number): Promise<{ note_uuid: string; share_user_id: number; share_url: string }> {
       const { data } = await api.post(`/notes/${id}/share`);
+      return data;
+    },
+    /**
+     * 切换分享状态（公开/私密）。
+     */
+    async toggleNoteShareStatus(id: number, isShared: boolean): Promise<NoteShareStatus> {
+      const { data } = await api.patch(`/notes/${id}/share-toggle`, { is_shared: isShared });
+      const index = this.notes.findIndex(n => n.id === id);
+      if (index !== -1) {
+        this.notes[index] = {
+          ...this.notes[index],
+          is_shared: data.is_shared,
+          share_uuid: data.note_uuid ?? this.notes[index].share_uuid ?? null,
+        };
+      }
       return data;
     },
     /**
