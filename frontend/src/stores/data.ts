@@ -38,6 +38,14 @@ export interface NoteShareStatus {
   share_url?: string | null;
 }
 
+export interface NoteAiSummary {
+  summary: string;
+}
+
+export interface NoteAiTodos {
+  todos: Todo[];
+}
+
 export interface LedgerEntry {
   id: number;
   raw_text: string;
@@ -58,6 +66,7 @@ export interface Todo {
   title: string;
   completed: boolean;
   is_pinned?: boolean;
+  is_ai_generated?: boolean;
   group_id?: number | null;
   group_items?: Todo[];
   created_at: string;
@@ -453,6 +462,14 @@ export const useDataStore = defineStore("data", {
       const { data } = await api.get("/notes/share", {
         params: { note_uuid: noteUuid, share_user_id: shareUserId },
       });
+      return data;
+    },
+    async generateNoteAiSummary(id: number): Promise<NoteAiSummary> {
+      const { data } = await api.post(`/notes/${id}/ai-summary`);
+      return data;
+    },
+    async generateNoteAiTodos(id: number): Promise<NoteAiTodos> {
+      const { data } = await api.post(`/notes/${id}/ai-todos`);
       return data;
     },
     async togglePinNote(id: number) {

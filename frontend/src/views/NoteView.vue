@@ -66,6 +66,38 @@
                 <span class="max-[420px]:hidden">复制链接</span>
               </button>
             </div>
+            <div v-if="!isShareView && canEdit" class="relative">
+              <button
+                @click="toggleAiPanel"
+                class="btn ghost text-sm"
+                title="AI 功能"
+                aria-label="AI 功能"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1 max-[420px]:mr-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l2.09 6.26L20 9l-5 3.74L16.18 19 12 15.77 7.82 19 9 12.74 4 9l5.91-.74L12 3z" />
+                </svg>
+                <span class="max-[420px]:hidden">AI</span>
+              </button>
+              <div
+                v-if="aiPanelOpen"
+                class="absolute right-0 mt-2 w-40 rounded-2xl border border-border bg-surface shadow-float p-2 z-10"
+              >
+                <button
+                  @click="handleAiSummary"
+                  class="btn ghost w-full text-left text-sm"
+                  :disabled="aiSummaryLoading"
+                >
+                  {{ aiSummaryLoading ? "总结中..." : "AI 总结" }}
+                </button>
+                <button
+                  @click="handleAiTodos"
+                  class="btn ghost w-full text-left text-sm"
+                  :disabled="aiTodosLoading"
+                >
+                  {{ aiTodosLoading ? "生成中..." : "转待办" }}
+                </button>
+              </div>
+            </div>
             <button
               @click="copyNoteText"
               class="btn ghost text-sm"
@@ -94,6 +126,17 @@
       </div>
       <div v-else class="bg-surface border border-border rounded-3xl shadow-card p-4 md:p-6 lg:p-8 mx-auto text-center">
         <p class="text-muted text-lg">{{ emptyMessage }}</p>
+      </div>
+      <div
+        v-if="aiSummary && !isShareView"
+        class="bg-surface border border-border rounded-3xl shadow-card p-4 md:p-6 lg:p-8 mx-auto mt-4 relative"
+      >
+        <div class="mb-2">
+          <MdPreview v-secure-display :modelValue="aiSummary" :theme="theme.resolvedTheme" />
+        </div>
+        <div class="absolute bottom-3 left-4 text-[10px] text-muted">
+          AI生成
+        </div>
       </div>
     </main>
     
@@ -166,6 +209,10 @@ const canEdit = computed(() => (!isShareView.value ? true : sharedNote.value?.ca
 const activeNoteId = computed(() => displayedNote.value?.id ?? null);
 const shareEnabled = ref(false);
 const shareLinkOverride = ref("");
+const aiPanelOpen = ref(false);
+const aiSummary = ref("");
+const aiSummaryLoading = ref(false);
+const aiTodosLoading = ref(false);
 const shareOwnerName = computed(() => {
   const user = sharedNote.value?.share_user;
   if (!user) return "";
@@ -228,6 +275,8 @@ watch(note, () => {
   if (!shareEnabled.value) {
     shareLinkOverride.value = "";
   }
+  aiSummary.value = "";
+  aiPanelOpen.value = false;
 }, { immediate: true });
 
 // 复制笔记文本
@@ -288,6 +337,44 @@ const handleCopyShareLink = async () => {
     toast.success("分享链接已复制");
   } catch {
     toast.error("复制分享链接失败");
+  }
+};
+
+const toggleAiPanel = () => {
+  aiPanelOpen.value = !aiPanelOpen.value;
+};
+
+const handleAiSummary = async () => {
+  if (!activeNoteId.value) return;
+  aiSummaryLoading.value = true;
+  try {
+    const result = await data.generateNoteAiSummary(Number(activeNoteId.value));
+    aiSummary.value = result.summary;
+    aiPanelOpen.value = false;
+    toast.success("AI 总结已生成");
+  } catch (error: any) {
+    toast.error(error.response?.data?.detail || "AI 总结失败");
+  } finally {
+    aiSummaryLoading.value = false;
+  }
+};
+
+const handleAiTodos = async () => {
+  if (!activeNoteId.value) return;
+  aiTodosLoading.value = true;
+  try {
+    const result = await data.generateNoteAiTodos(Number(activeNoteId.value));
+    aiPanelOpen.value = false;
+    if (result.todos.length === 0) {
+      toast.info("未识别到待办");
+    } else {
+      await data.fetchTodos(false);
+      toast.success("AI 待办已生成");
+    }
+  } catch (error: any) {
+    toast.error(error.response?.data?.detail || "AI 待办生成失败");
+  } finally {
+    aiTodosLoading.value = false;
   }
 };
 
