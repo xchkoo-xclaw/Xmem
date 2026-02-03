@@ -19,12 +19,16 @@
       <div v-if="loading" class="text-center py-12">
         <p class="text-muted">加载中...</p>
       </div>
-      <div v-else-if="statistics" class="space-y-6">
-        <div class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
+      <div v-else-if="hasStatistics" class="space-y-6">
+        <div id="monthly-calendar" class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
           <h2 class="text-lg font-bold text-text mb-2">月度日历</h2>
-          <div class="flex flex-wrap items-center justify-between gap-2 mb-4 text-sm text-muted">
-            <span>{{ calendarMonthLabel }}</span>
-            <span class="font-semibold text-text">本月支出 ¥{{ statistics.current_month_total.toLocaleString() }}</span>
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div class="flex items-center gap-2 text-sm text-muted">
+              <button class="btn ghost px-2 py-1" @click="shiftCalendarMonth(-1, '#monthly-calendar')">上月</button>
+              <span>{{ calendarMonthLabel }}</span>
+              <button class="btn ghost px-2 py-1" @click="shiftCalendarMonth(1, '#monthly-calendar')">下月</button>
+            </div>
+            <span class="text-sm font-semibold text-text">当月支出 ¥{{ calendarStats?.current_month_total.toLocaleString() }}</span>
           </div>
           <div class="grid grid-cols-7 gap-2 text-xs text-muted mb-2">
             <div v-for="weekday in weekdays" :key="weekday" class="text-center">{{ weekday }}</div>
@@ -48,19 +52,62 @@
           </div>
         </div>
 
-        <div class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
-          <h2 class="text-lg font-bold text-text mb-4">月度 AI 总结</h2>
-          <div v-if="statistics.ai_summary" class="prose prose-sm max-w-none">
-            <MdPreview v-secure-display :modelValue="statistics.ai_summary" :theme="theme.resolvedTheme" />
+        <div id="monthly-trend" class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h2 class="text-lg font-bold text-text">{{ monthlyTrendTitle }}</h2>
+            <div class="flex items-center gap-2 text-sm text-muted">
+              <button class="btn ghost px-2 py-1" @click="shiftMonthlyTrendRange(-1, '#monthly-trend')">上六个月</button>
+              <span>{{ monthlyTrendRangeLabel }}</span>
+              <button
+                v-if="canShiftToNextSixMonths"
+                class="btn ghost px-2 py-1"
+                @click="shiftMonthlyTrendRange(1, '#monthly-trend')"
+              >
+                下六个月
+              </button>
+            </div>
+          </div>
+          <div class="h-56">
+            <v-chart :option="monthlyTrendOption" autoresize />
+          </div>
+        </div>
+
+        <div
+          id="monthly-summary"
+          class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8 relative overflow-hidden group"
+          :class="{ 'ai-loading': summaryGenerating }"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h2 class="text-lg font-bold text-text">月度 AI 总结</h2>
+            <div class="flex items-center gap-2 text-sm text-muted">
+              <button class="btn ghost px-2 py-1" @click="shiftSummaryMonth(-1, '#monthly-summary')">上月</button>
+              <span>{{ summaryMonthLabel }}</span>
+              <button class="btn ghost px-2 py-1" @click="shiftSummaryMonth(1, '#monthly-summary')">下月</button>
+              <button
+                class="btn ghost px-2 py-1"
+                @click="handleGenerateSummary"
+                :disabled="summaryGenerating"
+              >
+                {{ summaryGenerating ? "生成中..." : "手动生成" }}
+              </button>
+            </div>
+          </div>
+          <div v-if="summaryGenerating" class="space-y-2">
+            <div class="ai-skeleton-line w-3/4"></div>
+            <div class="ai-skeleton-line w-2/3"></div>
+            <div class="ai-skeleton-line w-1/2"></div>
+          </div>
+          <div v-else-if="summaryStats?.ai_summary" class="prose prose-sm max-w-none">
+            <MdPreview v-secure-display :modelValue="summaryStats.ai_summary" :theme="theme.resolvedTheme" />
           </div>
           <div v-else class="text-sm text-muted">暂无总结</div>
         </div>
 
-        <div class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
+        <div id="monthly-budget" class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
           <h2 class="text-lg font-bold text-text mb-4">月度预算</h2>
           <div class="flex flex-col gap-4">
             <div class="flex flex-wrap items-center gap-3">
-              <span class="text-sm text-muted">{{ calendarMonthLabel }}</span>
+              <span class="text-sm text-muted">{{ budgetMonthLabel }}</span>
               <span v-if="budgetAmount !== null" class="text-sm text-text">
                 当前预算 ¥{{ budgetAmount.toLocaleString() }}
               </span>
@@ -83,7 +130,7 @@
           </div>
         </div>
 
-        <div class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
+        <div id="category-stats" class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
           <h2 class="text-lg font-bold text-text mb-4">支出分类</h2>
           
           <!-- 分类占比饼图 -->
@@ -94,7 +141,7 @@
             </div>
             <div v-if="isNarrowScreen" class="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-muted">
               <div
-                v-for="(item, index) in statistics.category_stats"
+                v-for="(item, index) in categoryStats?.category_stats || []"
                 :key="item.category"
                 class="flex items-center gap-2"
               >
@@ -107,7 +154,7 @@
           <!-- 分类详情列表 -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div 
-              v-for="(item, index) in statistics.category_stats"
+              v-for="(item, index) in categoryStats?.category_stats || []"
               :key="item.category"
               class="flex items-center gap-3 p-3 bg-surface2 border border-border rounded-lg"
             >
@@ -138,14 +185,34 @@
           </div>
         </div>
 
-        <div class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
-          <h2 class="text-lg font-bold text-text mb-4">年度总结</h2>
-          
+        <div id="yearly-summary" class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h2 class="text-lg font-bold text-text">年度总结</h2>
+            <div class="flex items-center gap-2 text-sm text-muted">
+              <button class="btn ghost px-2 py-1" @click="shiftYearlySummary(-1, '#yearly-summary')">上一年</button>
+              <span>{{ yearlySummaryLabel }}</span>
+              <button class="btn ghost px-2 py-1" @click="shiftYearlySummary(1, '#yearly-summary')">下一年</button>
+            </div>
+          </div>
           <div class="mb-6">
             <h3 class="text-sm font-semibold text-muted mb-3">全年支出趋势</h3>
             <div class="h-64">
               <v-chart :option="yearlyChartOption" autoresize />
             </div>
+          </div>
+        </div>
+
+        <div id="yearly-compare" class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h2 class="text-lg font-bold text-text">年度支出对比</h2>
+            <div class="flex items-center gap-2 text-sm text-muted">
+              <button class="btn ghost px-2 py-1" @click="shiftYearlyCompare(-1, '#yearly-compare')">上一年</button>
+              <span>{{ yearlyCompareLabel }}</span>
+              <button class="btn ghost px-2 py-1" @click="shiftYearlyCompare(1, '#yearly-compare')">下一年</button>
+            </div>
+          </div>
+          <div class="h-56">
+            <v-chart :option="yearlyComparisonOption" autoresize />
           </div>
         </div>
       </div>
@@ -160,7 +227,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
-import { BarChart, PieChart } from "echarts/charts";
+import { BarChart, LineChart, PieChart } from "echarts/charts";
 import {
   TitleComponent,
   TooltipComponent,
@@ -179,6 +246,7 @@ import VChart from "vue-echarts";
 use([
   CanvasRenderer,
   BarChart,
+  LineChart,
   PieChart,
   TitleComponent,
   TooltipComponent,
@@ -195,14 +263,39 @@ const emit = defineEmits<{
 }>();
 
 const data = useDataStore();
-const statistics = ref<LedgerStatistics | null>(null);
+const calendarStats = ref<LedgerStatistics | null>(null);
+const summaryStats = ref<LedgerStatistics | null>(null);
+const monthlyTrendStats = ref<LedgerStatistics | null>(null);
+const categoryStats = ref<LedgerStatistics | null>(null);
+const yearlySummaryStats = ref<LedgerStatistics | null>(null);
+const yearlyCompareStats = ref<LedgerStatistics | null>(null);
+const budgetStats = ref<LedgerStatistics | null>(null);
 const loading = ref(true);
 const windowWidth = ref(typeof window !== "undefined" ? window.innerWidth : 1024);
 const isNarrowScreen = computed(() => windowWidth.value < 560);
 const budgetInput = ref<number | null>(null);
 const budgetAmount = ref<number | null>(null);
 const isSavingBudget = ref(false);
+const summaryGenerating = ref(false);
 const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+const calendarMonth = ref<string>("");
+const summaryMonth = ref<string>("");
+const monthlyTrendEndMonth = ref<string>("");
+const yearlySummaryYear = ref<number>(new Date().getFullYear());
+const yearlyCompareYear = ref<number>(new Date().getFullYear());
+const latestTrendEndMonth = ref<string>("");
+
+const hasStatistics = computed(() => {
+  return Boolean(
+    calendarStats.value &&
+      summaryStats.value &&
+      monthlyTrendStats.value &&
+      categoryStats.value &&
+      yearlySummaryStats.value &&
+      yearlyCompareStats.value &&
+      budgetStats.value
+  );
+});
 
 const handleResize = () => {
   windowWidth.value = window.innerWidth;
@@ -210,15 +303,15 @@ const handleResize = () => {
 
 // 年度图表配置
 const yearlyChartOption = computed(() => {
-  if (!statistics.value || !statistics.value.yearly_data.length) {
+  if (!yearlySummaryStats.value || !yearlySummaryStats.value.yearly_data.length) {
     return undefined;
   }
 
-  const months = statistics.value.yearly_data.map(item => {
+  const months = yearlySummaryStats.value.yearly_data.map(item => {
     const [year, month] = item.month.split('-');
     return `${parseInt(month)}月`;
   });
-  const amounts = statistics.value.yearly_data.map(item => item.amount);
+  const amounts = yearlySummaryStats.value.yearly_data.map(item => item.amount);
 
   return {
     grid: {
@@ -275,9 +368,126 @@ const yearlyChartOption = computed(() => {
   };
 });
 
+// 月度趋势图表配置
+const monthlyTrendOption = computed(() => {
+  if (!monthlyTrendStats.value || !monthlyTrendStats.value.monthly_data.length) {
+    return undefined;
+  }
+
+  const months = monthlyTrendStats.value.monthly_data.map((item) => {
+    const [year, month] = item.month.split("-");
+    return `${parseInt(month)}月`;
+  });
+  const amounts = monthlyTrendStats.value.monthly_data.map((item) => item.amount);
+
+  return {
+    grid: {
+      left: "10%",
+      right: "10%",
+      top: "12%",
+      bottom: "18%"
+    },
+    xAxis: {
+      type: "category",
+      data: months,
+      axisLabel: {
+        fontSize: 11,
+        color: "rgb(var(--c-text-muted))"
+      }
+    },
+    yAxis: {
+      type: "value",
+      axisLabel: {
+        formatter: (value: number) => `¥${(value / 1000).toFixed(0)}k`,
+        fontSize: 12,
+        color: "rgb(var(--c-text-muted))"
+      }
+    },
+    series: [
+      {
+        type: "line",
+        data: amounts,
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 6,
+        lineStyle: {
+          width: 3,
+          color: "#10B981"
+        },
+        itemStyle: {
+          color: "#10B981"
+        },
+        areaStyle: {
+          color: "rgba(16, 185, 129, 0.2)"
+        }
+      }
+    ],
+    tooltip: {
+      trigger: "axis",
+      formatter: (params: any) => {
+        const param = params[0];
+        return `${param.name}<br/>¥${param.value.toLocaleString()}`;
+      }
+    }
+  };
+});
+
+// 年度对比图表配置
+const yearlyComparisonOption = computed(() => {
+  if (!yearlyCompareStats.value || !yearlyCompareStats.value.yearly_totals.length) {
+    return undefined;
+  }
+
+  const years = yearlyCompareStats.value.yearly_totals.map((item) => `${item.year}年`);
+  const amounts = yearlyCompareStats.value.yearly_totals.map((item) => item.amount);
+
+  return {
+    grid: {
+      left: "10%",
+      right: "10%",
+      top: "12%",
+      bottom: "18%"
+    },
+    xAxis: {
+      type: "category",
+      data: years,
+      axisLabel: {
+        fontSize: 11,
+        color: "rgb(var(--c-text-muted))"
+      }
+    },
+    yAxis: {
+      type: "value",
+      axisLabel: {
+        formatter: (value: number) => `¥${(value / 1000).toFixed(0)}k`,
+        fontSize: 12,
+        color: "rgb(var(--c-text-muted))"
+      }
+    },
+    series: [
+      {
+        type: "bar",
+        data: amounts,
+        itemStyle: {
+          color: "#3B82F6",
+          borderRadius: [4, 4, 0, 0]
+        },
+        barWidth: "50%"
+      }
+    ],
+    tooltip: {
+      trigger: "axis",
+      formatter: (params: any) => {
+        const param = params[0];
+        return `${param.name}<br/>¥${param.value.toLocaleString()}`;
+      }
+    }
+  };
+});
+
 // 分类饼图配置
 const categoryChartOption = computed(() => {
-  if (!statistics.value || !statistics.value.category_stats.length) {
+  if (!categoryStats.value || !categoryStats.value.category_stats.length) {
     return undefined;
   }
 
@@ -286,7 +496,7 @@ const categoryChartOption = computed(() => {
     '#EF4444', '#06B6D4', '#F97316', '#6366F1', '#14B8A6'
   ];
 
-  const data = statistics.value.category_stats.map((item, index) => ({
+  const data = categoryStats.value.category_stats.map((item, index) => ({
     value: item.amount,
     name: item.category,
     itemStyle: {
@@ -318,9 +528,8 @@ const categoryChartOption = computed(() => {
         center: isNarrowScreen.value ? ['50%', '50%'] : ['60%', '50%'],
         avoidLabelOverlap: false,
         itemStyle: {
-          borderRadius: 8,
-          borderColor: 'rgb(var(--c-surface))',
-          borderWidth: 2
+          borderColor: 'transparent',
+          borderWidth: 0
         },
         label: {
           show: false
@@ -355,20 +564,102 @@ const formatMonthLabel = (month: string) => {
   return `${year}年${parseInt(monthValue)}月`;
 };
 
+/**
+ * 格式化年份显示文案。
+ */
+const formatYearLabel = (year: number) => {
+  return `${year}年`;
+};
+
+/**
+ * 获取可用的月份字符串。
+ */
+const resolveMonthValue = (month: string | undefined, fallback: string | undefined) => {
+  return month || fallback || new Date().toISOString().slice(0, 7);
+};
+
+/**
+ * 解析月份字符串为年月数值。
+ */
+const parseMonthValue = (monthValue: string) => {
+  const [year, month] = monthValue.split("-");
+  return { year: Number(year), month: Number(month) };
+};
+
+/**
+ * 计算偏移后的月份字符串。
+ */
+const shiftMonthValue = (monthValue: string, offset: number) => {
+  const { year, month } = parseMonthValue(monthValue);
+  const total = year * 12 + (month - 1) + offset;
+  const nextYear = Math.floor(total / 12);
+  const nextMonth = (total % 12) + 1;
+  return `${nextYear}-${String(nextMonth).padStart(2, "0")}`;
+};
+
+/**
+ * 获取近六个月的起止月份。
+ */
+const resolveSixMonthRange = (endMonth: string) => {
+  const startMonth = shiftMonthValue(endMonth, -5);
+  return { startMonth, endMonth };
+};
+
 const calendarMonthLabel = computed(() => {
-  if (!statistics.value) return "";
-  return formatMonthLabel(statistics.value.current_month);
+  if (!calendarMonth.value) return "";
+  return formatMonthLabel(calendarMonth.value);
+});
+
+const summaryMonthLabel = computed(() => {
+  if (!summaryMonth.value) return "";
+  return formatMonthLabel(summaryMonth.value);
+});
+
+const budgetMonthLabel = computed(() => {
+  if (!budgetStats.value) return "";
+  return formatMonthLabel(budgetStats.value.current_month);
+});
+
+const yearlySummaryLabel = computed(() => {
+  return formatYearLabel(yearlySummaryYear.value);
+});
+
+const yearlyCompareLabel = computed(() => {
+  return formatYearLabel(yearlyCompareYear.value);
+});
+
+const monthlyTrendRangeLabel = computed(() => {
+  if (!monthlyTrendEndMonth.value) return "";
+  if (latestTrendEndMonth.value && monthlyTrendEndMonth.value === latestTrendEndMonth.value) {
+    return "近六个月";
+  }
+  const { startMonth, endMonth } = resolveSixMonthRange(monthlyTrendEndMonth.value);
+  return `${formatMonthLabel(startMonth)}到${formatMonthLabel(endMonth)}`;
+});
+
+const monthlyTrendTitle = computed(() => {
+  if (!monthlyTrendEndMonth.value) return "";
+  if (latestTrendEndMonth.value && monthlyTrendEndMonth.value === latestTrendEndMonth.value) {
+    return "近六个月支出趋势";
+  }
+  const { startMonth, endMonth } = resolveSixMonthRange(monthlyTrendEndMonth.value);
+  return `${formatMonthLabel(startMonth)}到${formatMonthLabel(endMonth)}支出趋势`;
+});
+
+const canShiftToNextSixMonths = computed(() => {
+  if (!latestTrendEndMonth.value || !monthlyTrendEndMonth.value) return false;
+  return monthlyTrendEndMonth.value !== latestTrendEndMonth.value;
 });
 
 const calendarCells = computed(() => {
-  if (!statistics.value) return [];
-  const [yearStr, monthStr] = statistics.value.current_month.split("-");
+  if (!calendarStats.value || !calendarMonth.value) return [];
+  const [yearStr, monthStr] = calendarMonth.value.split("-");
   const year = Number(yearStr);
   const month = Number(monthStr);
   const firstDay = new Date(year, month - 1, 1).getDay();
   const daysInMonth = new Date(year, month, 0).getDate();
   const dailyMap = new Map(
-    statistics.value.daily_data.map(item => [item.date, item])
+    calendarStats.value.daily_data.map(item => [item.date, item])
   );
   const cells: Array<{
     key: string;
@@ -401,16 +692,16 @@ const calendarCells = computed(() => {
 });
 
 const budgetRemaining = computed(() => {
-  if (budgetAmount.value === null || !statistics.value) return 0;
-  return budgetAmount.value - statistics.value.current_month_total;
+  if (budgetAmount.value === null || !budgetStats.value) return 0;
+  return budgetAmount.value - budgetStats.value.current_month_total;
 });
 
 /**
  * 同步预算输入框的默认值。
  */
 const syncBudgetInput = () => {
-  if (!statistics.value) return;
-  budgetAmount.value = statistics.value.budget?.amount ?? null;
+  if (!budgetStats.value) return;
+  budgetAmount.value = budgetStats.value.budget?.amount ?? null;
   budgetInput.value = budgetAmount.value ?? null;
 };
 
@@ -418,7 +709,7 @@ const syncBudgetInput = () => {
  * 保存当前月份预算。
  */
 const saveBudget = async () => {
-  if (!statistics.value) return;
+  if (!budgetStats.value) return;
   if (budgetInput.value === null || Number.isNaN(budgetInput.value)) {
     toast.warning("请输入预算金额");
     return;
@@ -426,12 +717,12 @@ const saveBudget = async () => {
   isSavingBudget.value = true;
   try {
     const result = await data.upsertLedgerBudget(
-      statistics.value.current_month,
+      budgetStats.value.current_month,
       Number(budgetInput.value)
     );
     budgetAmount.value = result.amount;
-    statistics.value = {
-      ...statistics.value,
+    budgetStats.value = {
+      ...budgetStats.value,
       budget: result,
     };
     toast.success("预算已保存");
@@ -443,18 +734,210 @@ const saveBudget = async () => {
 };
 
 /**
- * 加载记账统计数据。
+ * 加载月度日历统计数据。
  */
-const loadStatistics = async () => {
-  loading.value = true;
+const loadCalendarStats = async (month?: string) => {
   try {
-    statistics.value = await data.fetchLedgerStatistics();
+    const stats = await data.fetchLedgerStatistics({ month });
+    calendarStats.value = stats;
+    calendarMonth.value = resolveMonthValue(month, stats.current_month);
+  } catch (error) {
+    console.error("获取月度日历统计失败:", error);
+  }
+};
+
+/**
+ * 加载月度 AI 总结统计数据。
+ */
+const loadSummaryStats = async (month?: string) => {
+  try {
+    const stats = await data.fetchLedgerStatistics({ month });
+    summaryStats.value = stats;
+    summaryMonth.value = resolveMonthValue(month, stats.current_month);
+  } catch (error) {
+    console.error("获取月度 AI 总结失败:", error);
+  }
+};
+
+/**
+ * 加载月度趋势统计数据。
+ */
+const loadMonthlyTrendStats = async (endMonth?: string) => {
+  try {
+    const stats = await data.fetchLedgerStatistics({ month: endMonth });
+    monthlyTrendStats.value = stats;
+    const resolvedMonth = resolveMonthValue(endMonth, stats.current_month);
+    monthlyTrendEndMonth.value = resolvedMonth;
+    if (!latestTrendEndMonth.value && !endMonth) {
+      latestTrendEndMonth.value = resolvedMonth;
+    }
+  } catch (error) {
+    console.error("获取月度趋势统计失败:", error);
+  }
+};
+
+/**
+ * 加载支出分类统计数据。
+ */
+const loadCategoryStats = async (month?: string) => {
+  try {
+    const stats = await data.fetchLedgerStatistics({ month });
+    categoryStats.value = stats;
+  } catch (error) {
+    console.error("获取分类统计失败:", error);
+  }
+};
+
+/**
+ * 加载月度预算统计数据。
+ */
+const loadBudgetStats = async (month?: string) => {
+  try {
+    const stats = await data.fetchLedgerStatistics({ month });
+    budgetStats.value = stats;
     syncBudgetInput();
   } catch (error) {
-    console.error("获取统计数据失败:", error);
+    console.error("获取月度预算统计失败:", error);
+  }
+};
+
+/**
+ * 加载年度总结统计数据。
+ */
+const loadYearlySummaryStats = async (year?: number) => {
+  try {
+    const stats = await data.fetchLedgerStatistics({ year });
+    yearlySummaryStats.value = stats;
+    if (year) {
+      yearlySummaryYear.value = year;
+    } else {
+      yearlySummaryYear.value = Number(stats.current_month.split("-")[0]);
+    }
+  } catch (error) {
+    console.error("获取年度总结统计失败:", error);
+  }
+};
+
+/**
+ * 加载年度对比统计数据。
+ */
+const loadYearlyCompareStats = async (year?: number) => {
+  try {
+    const stats = await data.fetchLedgerStatistics({ year });
+    yearlyCompareStats.value = stats;
+    if (year) {
+      yearlyCompareYear.value = year;
+    } else {
+      yearlyCompareYear.value = Number(stats.current_month.split("-")[0]);
+    }
+  } catch (error) {
+    console.error("获取年度对比统计失败:", error);
+  }
+};
+
+/**
+ * 初始化加载全部统计卡片数据。
+ */
+const loadAllStatistics = async () => {
+  loading.value = true;
+  try {
+    await Promise.all([
+      loadCalendarStats(),
+      loadSummaryStats(),
+      loadMonthlyTrendStats(),
+      loadCategoryStats(),
+      loadYearlySummaryStats(),
+      loadYearlyCompareStats(),
+      loadBudgetStats()
+    ]);
   } finally {
     loading.value = false;
   }
+};
+
+/**
+ * 切换显示月份。
+ */
+const pushToCard = async (hash: string) => {
+  const normalized = hash.startsWith("#") ? hash : `#${hash}`;
+  await router.replace({ name: "statistics", hash: normalized });
+};
+
+/**
+ * 切换月度日历显示月份。
+ */
+const shiftCalendarMonth = async (offset: number, hash: string) => {
+  const baseMonth = resolveMonthValue(calendarMonth.value, calendarStats.value?.current_month);
+  const nextMonth = shiftMonthValue(baseMonth, offset);
+  calendarMonth.value = nextMonth;
+  await loadCalendarStats(nextMonth);
+  await pushToCard(hash);
+};
+
+/**
+ * 切换月度 AI 总结显示月份。
+ */
+const shiftSummaryMonth = async (offset: number, hash: string) => {
+  const baseMonth = resolveMonthValue(summaryMonth.value, summaryStats.value?.current_month);
+  const nextMonth = shiftMonthValue(baseMonth, offset);
+  summaryMonth.value = nextMonth;
+  await loadSummaryStats(nextMonth);
+  await pushToCard(hash);
+};
+
+/**
+ * 手动生成当前月份的 AI 总结。
+ */
+const handleGenerateSummary = async () => {
+  const targetMonth = resolveMonthValue(summaryMonth.value, summaryStats.value?.current_month);
+  summaryMonth.value = targetMonth;
+  summaryGenerating.value = true;
+  try {
+    const result = await data.generateLedgerMonthlySummary(targetMonth);
+    if (summaryStats.value) {
+      summaryStats.value = {
+        ...summaryStats.value,
+        current_month: targetMonth,
+        ai_summary: result.summary,
+      };
+    } else {
+      await loadSummaryStats(targetMonth);
+    }
+    toast.success("AI 总结已生成");
+  } catch (error: any) {
+    toast.error(error.response?.data?.detail || "AI 总结生成失败");
+  } finally {
+    summaryGenerating.value = false;
+  }
+};
+
+/**
+ * 切换月度趋势范围。
+ */
+const shiftMonthlyTrendRange = async (offset: number, hash: string) => {
+  const baseMonth = resolveMonthValue(monthlyTrendEndMonth.value, monthlyTrendStats.value?.current_month);
+  const nextMonth = shiftMonthValue(baseMonth, offset * 6);
+  monthlyTrendEndMonth.value = nextMonth;
+  await loadMonthlyTrendStats(nextMonth);
+  await pushToCard(hash);
+};
+
+/**
+ * 切换年度总结显示年份。
+ */
+const shiftYearlySummary = async (offset: number, hash: string) => {
+  yearlySummaryYear.value += offset;
+  await loadYearlySummaryStats(yearlySummaryYear.value);
+  await pushToCard(hash);
+};
+
+/**
+ * 切换年度对比显示年份。
+ */
+const shiftYearlyCompare = async (offset: number, hash: string) => {
+  yearlyCompareYear.value += offset;
+  await loadYearlyCompareStats(yearlyCompareYear.value);
+  await pushToCard(hash);
 };
 
 onMounted(async () => {
@@ -462,7 +945,7 @@ onMounted(async () => {
     window.addEventListener("resize", handleResize);
     windowWidth.value = window.innerWidth;
   }
-  await loadStatistics();
+  await loadAllStatistics();
 });
 
 onUnmounted(() => {
@@ -483,6 +966,35 @@ onUnmounted(() => {
 }
 .btn.ghost {
   @apply bg-surface text-text border border-border hover:border-border/70;
+}
+
+.ai-skeleton-line {
+  @apply h-3 rounded-full bg-surface2;
+}
+
+.ai-loading {
+  border-color: rgb(255, 90, 180);
+  box-shadow: 0 0 18px rgba(255, 90, 180, 0.45);
+  animation: ai-rgb-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes ai-rgb-pulse {
+  0% {
+    border-color: rgb(255, 90, 180);
+    box-shadow: 0 0 18px rgba(255, 90, 180, 0.45);
+  }
+  33% {
+    border-color: rgb(90, 170, 255);
+    box-shadow: 0 0 18px rgba(90, 170, 255, 0.45);
+  }
+  66% {
+    border-color: rgb(120, 255, 150);
+    box-shadow: 0 0 18px rgba(120, 255, 150, 0.45);
+  }
+  100% {
+    border-color: rgb(255, 90, 180);
+    box-shadow: 0 0 18px rgba(255, 90, 180, 0.45);
+  }
 }
 </style>
 

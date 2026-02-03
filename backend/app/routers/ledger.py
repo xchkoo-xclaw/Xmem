@@ -7,13 +7,19 @@ import datetime as dt
 import calendar
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.exc import SQLAlchemyError
 from celery import chain
 
 from .. import models, schemas
 from ..db import get_session
 from ..auth import get_current_user
 from ..tasks.ocr_tasks import extract_text_from_image_task
-from ..tasks.ledger_tasks import wrap_analyze_text_with_entry_id, merge_text_and_analyze, update_ledger_entry
+from ..tasks.ledger_tasks import (
+    wrap_analyze_text_with_entry_id,
+    merge_text_and_analyze,
+    update_ledger_entry,
+)
+from ..services import ai as ai_service
 from ..utils.file_utils import save_uploaded_img
 from ..utils.exchange_rate import get_exchange_rate_to_cny, convert_to_cny
 from ..constants import LEDGER_CATEGORIES
@@ -34,6 +40,29 @@ def _parse_month(value: str) -> dt.datetime:
         return dt.datetime.strptime(value, "%Y-%m")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="月份格式必须为 YYYY-MM") from exc
+
+
+def _format_month(year: int, month: int) -> str:
+    """格式化月份为 YYYY-MM 字符串。"""
+    return f"{year}-{month:02d}"
+
+
+def _add_months(year: int, month: int, offset: int) -> tuple[int, int]:
+    """基于偏移量计算新的年月。"""
+    total = (year * 12 + (month - 1)) + offset
+    new_year = total // 12
+    new_month = total % 12 + 1
+    return new_year, new_month
+
+
+def _resolve_target_year(month_value: str, year_value: int | None) -> int:
+    """解析统计使用的目标年份。"""
+    if year_value is not None:
+        if year_value < 1970 or year_value > 2100:
+            raise HTTPException(status_code=400, detail="年份范围必须在 1970-2100")
+        return year_value
+    parsed = _parse_month(month_value)
+    return parsed.year
 
 
 def _build_ledger_summary_text(entries: list[models.LedgerEntry]) -> str:
@@ -344,14 +373,75 @@ async def upsert_ledger_budget(
     return schemas.LedgerBudgetOut(month=budget.month, amount=budget.amount)
 
 
+@router.post("/statistics/ai-summary", response_model=schemas.LedgerMonthlySummaryOut)
+async def generate_ledger_ai_summary(
+    month: Optional[str] = Query(None, description="总结月份，格式 YYYY-MM"),
+    session: AsyncSession = Depends(get_session),
+    current_user: models.User = Depends(get_current_user),
+):
+    """生成并保存记账月度 AI 总结。"""
+    target_month = month or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m")
+    parsed = _parse_month(target_month)
+
+    query = select(models.LedgerEntry).where(
+        models.LedgerEntry.user_id == current_user.id,
+        models.LedgerEntry.status == "completed",
+        models.LedgerEntry.amount.isnot(None),
+    )
+    result = await session.execute(query)
+    entries = result.scalars().all()
+    target_entries: list[models.LedgerEntry] = []
+    for entry in entries:
+        entry_date = entry.event_time or entry.created_at
+        if entry_date.year == parsed.year and entry_date.month == parsed.month:
+            target_entries.append(entry)
+
+    if not target_entries:
+        raise HTTPException(status_code=400, detail="该月份暂无可用记账数据")
+
+    summary_text = _build_ledger_summary_text(target_entries)
+    summary = ai_service.generate_ledger_monthly_summary(summary_text)
+    last_entry_at = max(entry.updated_at or entry.created_at for entry in target_entries)
+
+    summary_record_result = await session.execute(
+        select(models.LedgerMonthlySummary).where(
+            models.LedgerMonthlySummary.user_id == current_user.id,
+            models.LedgerMonthlySummary.month == target_month,
+        )
+    )
+    summary_record = summary_record_result.scalar_one_or_none()
+    if summary_record:
+        summary_record.summary = summary
+        summary_record.last_entry_at = last_entry_at
+        summary_record.updated_at = models.utc_now()
+    else:
+        summary_record = models.LedgerMonthlySummary(
+            user_id=current_user.id,
+            month=target_month,
+            summary=summary,
+            last_entry_at=last_entry_at,
+        )
+        session.add(summary_record)
+
+    await session.commit()
+    return schemas.LedgerMonthlySummaryOut(summary=summary)
+
+
 @router.get("/statistics", response_model=schemas.LedgerStatisticsResponse)
 async def get_ledger_statistics(
+    month: Optional[str] = Query(None, description="统计月份，格式 YYYY-MM"),
+    year: Optional[int] = Query(None, description="统计年份，用于年度图表"),
     session: AsyncSession = Depends(get_session),
     current_user: models.User = Depends(get_current_user),
 ):
     """获取记账统计数据（必须在 /{ledger_id} 之前定义，避免路由冲突）"""
     
     now = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
+    target_month = month or now.strftime("%Y-%m")
+    parsed_target_month = _parse_month(target_month)
+    target_month_year = parsed_target_month.year
+    target_month_value = parsed_target_month.month
+    target_year = _resolve_target_year(target_month, year)
     
     # 获取所有已完成的记账条目
     query = select(models.LedgerEntry).where(
@@ -372,29 +462,20 @@ async def get_ledger_statistics(
             logger.warning(f"获取 {currency} 汇率失败: {str(e)}，使用默认值")
             exchange_rates[currency] = await get_exchange_rate_to_cny(currency)  # 会使用默认值
     
-    current_month_str = f"{now.year}-{now.month:02d}"
+    current_month_str = _format_month(target_month_year, target_month_value)
 
     # 计算近6个月数据
     monthly_data: list[schemas.MonthlyStats] = []
     for i in range(5, -1, -1):  # 从5个月前到当前月
-        # 计算月份
-        target_month = now.month - i
-        target_year = now.year
-        while target_month < 1:
-            target_month += 12
-            target_year -= 1
-        while target_month > 12:
-            target_month -= 12
-            target_year += 1
-        
-        month_str = f"{target_year}-{target_month:02d}"
+        computed_year, computed_month = _add_months(target_month_year, target_month_value, -i)
+        month_str = _format_month(computed_year, computed_month)
         
         month_amount = 0.0
         month_count = 0
         
         for entry in entries:
             entry_date = entry.event_time or entry.created_at
-            if entry_date.year == target_year and entry_date.month == target_month:
+            if entry_date.year == computed_year and entry_date.month == computed_month:
                 if entry.amount:
                     # 转换为人民币
                     currency = entry.currency or "CNY"
@@ -410,9 +491,9 @@ async def get_ledger_statistics(
     
     # 计算全年数据
     yearly_data: list[schemas.MonthlyStats] = []
-    current_year = now.year
+    current_year = target_year
     for month in range(1, 13):
-        month_str = f"{current_year}-{month:02d}"
+        month_str = _format_month(current_year, month)
         month_amount = 0.0
         month_count = 0
         
@@ -430,6 +511,25 @@ async def get_ledger_statistics(
             month=month_str,
             amount=month_amount,
             count=month_count
+        ))
+
+    # 计算近几年年度汇总
+    yearly_totals: list[schemas.YearlyStats] = []
+    for target_year_value in range(current_year - 4, current_year + 1):
+        year_amount = 0.0
+        year_count = 0
+        for entry in entries:
+            entry_date = entry.event_time or entry.created_at
+            if entry_date.year == target_year_value:
+                if entry.amount:
+                    currency = entry.currency or "CNY"
+                    rate = exchange_rates.get(currency, 1.0)
+                    year_amount += convert_to_cny(entry.amount, currency, rate)
+                year_count += 1
+        yearly_totals.append(schemas.YearlyStats(
+            year=target_year_value,
+            amount=year_amount,
+            count=year_count
         ))
     
     # 计算分类统计
@@ -472,13 +572,13 @@ async def get_ledger_statistics(
     month_diff_percent = (month_diff / last_month_total * 100) if last_month_total > 0 else 0.0
 
     # 计算当前月日历数据
-    days_in_month = calendar.monthrange(now.year, now.month)[1]
+    days_in_month = calendar.monthrange(target_month_year, target_month_value)[1]
     daily_amounts: dict[int, float] = {day: 0.0 for day in range(1, days_in_month + 1)}
     daily_counts: dict[int, int] = {day: 0 for day in range(1, days_in_month + 1)}
     current_month_entries: list[models.LedgerEntry] = []
     for entry in entries:
         entry_date = entry.event_time or entry.created_at
-        if entry_date.year == now.year and entry_date.month == now.month:
+        if entry_date.year == target_month_year and entry_date.month == target_month_value:
             current_month_entries.append(entry)
             day = entry_date.day
             currency = entry.currency or "CNY"
@@ -489,7 +589,7 @@ async def get_ledger_statistics(
 
     daily_data: list[schemas.DailyStats] = []
     for day in range(1, days_in_month + 1):
-        date_str = f"{now.year}-{now.month:02d}-{day:02d}"
+        date_str = f"{target_month_year}-{target_month_value:02d}-{day:02d}"
         daily_data.append(
             schemas.DailyStats(
                 date=date_str,
@@ -510,22 +610,28 @@ async def get_ledger_statistics(
         schemas.LedgerBudgetOut(month=budget.month, amount=budget.amount) if budget else None
     )
 
-    # 生成 AI 月度总结
+    # 读取已生成的月度总结
     ai_summary: str | None = None
-    if current_month_entries:
-        try:
-            from ..services import ai as ai_service
-
-            summary_text = _build_ledger_summary_text(current_month_entries)
-            ai_summary = ai_service.generate_ledger_monthly_summary(summary_text)
-        except Exception as error:
-            logger.warning(f"生成记账月度总结失败: {error}")
+    summary = None
+    try:
+        summary_record = await session.execute(
+            select(models.LedgerMonthlySummary).where(
+                models.LedgerMonthlySummary.user_id == current_user.id,
+                models.LedgerMonthlySummary.month == current_month_str,
+            )
+        )
+        summary = summary_record.scalar_one_or_none()
+        if summary and summary.summary:
+            ai_summary = summary.summary
+    except SQLAlchemyError as error:
+        logger.warning(f"读取记账月度总结失败: {error}")
     
     return schemas.LedgerStatisticsResponse(
         current_month=current_month_str,
         daily_data=daily_data,
         monthly_data=monthly_data,
         yearly_data=yearly_data,
+        yearly_totals=yearly_totals,
         category_stats=category_stats,
         current_month_total=current_month_total,
         last_month_total=last_month_total,

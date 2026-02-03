@@ -91,18 +91,18 @@
             <!-- 已上传的文件列表 -->
           </div>
 
-          <div v-if="currentTab === 'ledger'" class="p-1">
+          <div v-if="currentTab === 'ledger'">
             <div class="flex items-center gap-3">
               <button class="banner-nav" @click="handleBannerPrev">‹</button>
-              <div class="flex-1 overflow-hidden rounded-2xl">
-                <div class="flex transition-transform duration-500" :style="bannerTranslateStyle">
-                  <div class="w-full flex-shrink-0">
-                    <LedgerStatsCard @click="router.push('/ledger-statistics')" />
+              <div class="flex-1 overflow-hidden rounded-2xl bg-surface2 p-1">
+                <div class="flex transition-transform duration-500 banner-track" :style="bannerTranslateStyle">
+                  <div class="w-full flex-shrink-0 px-1">
+                    <LedgerStatsCard @click="router.push('/statistics')" />
                   </div>
-                  <div class="w-full flex-shrink-0">
+                  <div class="w-full flex-shrink-0 px-1">
                     <div
                       class="rounded-xl p-4 cursor-pointer transition-all duration-200 border border-border bg-surface shadow-card hover:shadow-float"
-                      @click="router.push('/ledger-statistics')"
+                      @click="router.push('/statistics')"
                     >
                       <div class="flex items-center justify-between mb-3">
                         <div>
@@ -153,6 +153,47 @@
                 @click="setBannerIndex(1)"
               ></button>
             </div>
+          </div>
+
+          <div
+            v-if="currentTab === 'ledger'"
+            class="rounded-xl p-4 border border-border bg-surface shadow-card hover:shadow-float transition-all duration-200"
+          >
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h3 class="text-sm font-semibold text-text">记账笔记</h3>
+                <p class="text-xs text-muted mt-1">按时间范围自动汇总</p>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h8M8 11h8M8 15h5M6 3h9l5 5v13a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z" />
+              </svg>
+            </div>
+            <div class="flex items-center gap-2 mb-3">
+              <button
+                class="btn ghost text-xs px-3 py-1.5 active:scale-95"
+                :class="ledgerNoteRange === 'day' ? '!border-green-500 !text-green-600 !bg-green-50' : ''"
+                @click="ledgerNoteRange = 'day'"
+              >
+                本日
+              </button>
+              <button
+                class="btn ghost text-xs px-3 py-1.5 active:scale-95"
+                :class="ledgerNoteRange === 'week' ? '!border-green-500 !text-green-600 !bg-green-50' : ''"
+                @click="ledgerNoteRange = 'week'"
+              >
+                本周
+              </button>
+              <button
+                class="btn ghost text-xs px-3 py-1.5 active:scale-95"
+                :class="ledgerNoteRange === 'month' ? '!border-green-500 !text-green-600 !bg-green-50' : ''"
+                @click="ledgerNoteRange = 'month'"
+              >
+                本月
+              </button>
+            </div>
+            <button class="btn primary w-full text-sm py-2" @click="handleGenerateLedgerNote">
+              生成记账笔记
+            </button>
           </div>
 
           <!-- 笔记模式：只显示最新笔记 -->
@@ -388,6 +429,7 @@ const ledgerStatistics = ref<LedgerStatistics | null>(null);
 const bannerIndex = ref(0);
 const bannerTimer = ref<number | null>(null);
 const bannerCount = 2;
+const ledgerNoteRange = ref<"day" | "week" | "month">("month");
 
 // 轮询相关的状态
 const pollingIntervals = ref<Map<number, number>>(new Map()); // ledgerId -> intervalId
@@ -478,6 +520,129 @@ const formatMonthLabel = (month: string) => {
 };
 
 /**
+ * 获取记账笔记时间范围文案。
+ */
+const getLedgerNoteRangeLabel = (range: "day" | "week" | "month") => {
+  if (range === "day") return "本日";
+  if (range === "week") return "本周";
+  return "本月";
+};
+
+/**
+ * 获取日期范围起止时间。
+ */
+const getLedgerNoteRangeDates = (range: "day" | "week" | "month") => {
+  const now = new Date();
+  const start = new Date(now);
+  const end = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
+  if (range === "week") {
+    const day = now.getDay();
+    const diffToMonday = (day + 6) % 7;
+    start.setDate(now.getDate() - diffToMonday);
+    end.setDate(start.getDate() + 6);
+  } else if (range === "month") {
+    start.setDate(1);
+    end.setMonth(now.getMonth() + 1, 0);
+  }
+
+  return { start, end };
+};
+
+/**
+ * 格式化日期为 YYYY-MM-DD。
+ */
+const formatDateLabel = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+/**
+ * 生成记账笔记 Markdown 内容。
+ */
+const buildLedgerNoteMarkdown = (
+  range: "day" | "week" | "month",
+  statistics: LedgerStatistics
+) => {
+  const rangeLabel = getLedgerNoteRangeLabel(range);
+  const { start, end } = getLedgerNoteRangeDates(range);
+  const rangeText = `${formatDateLabel(start)} 至 ${formatDateLabel(end)}`;
+  const dailyMap = new Map(statistics.daily_data.map((item) => [item.date, item]));
+
+  const lines: string[] = [];
+  lines.push(`# 记账笔记（${rangeLabel}）`);
+  lines.push("");
+  lines.push(`统计范围：${rangeText}`);
+  lines.push("");
+
+  if (range === "month") {
+    const monthTotal = statistics.current_month_total || 0;
+    const monthCount = statistics.daily_data.reduce((sum, item) => sum + item.count, 0);
+    lines.push(`本月总额：¥${monthTotal.toLocaleString()}`);
+    lines.push(`本月笔数：${monthCount} 笔`);
+
+    if (statistics.budget) {
+      const remaining = statistics.budget.amount - monthTotal;
+      const remainingLabel = remaining >= 0 ? "剩余" : "超出";
+      lines.push(
+        `预算：¥${statistics.budget.amount.toLocaleString()}，${remainingLabel} ¥${Math.abs(remaining).toLocaleString()}`
+      );
+    }
+
+    const topDays = [...statistics.daily_data]
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5);
+
+    if (topDays.length) {
+      lines.push("");
+      lines.push("金额最高的日期：");
+      for (const day of topDays) {
+        lines.push(`- ${day.date}：¥${day.amount.toLocaleString()}（${day.count} 笔）`);
+      }
+    }
+
+    if (statistics.ai_summary) {
+      lines.push("");
+      lines.push("AI 摘要：");
+      lines.push(`> ${statistics.ai_summary}`);
+    } 
+  } else {
+    const dates: string[] = [];
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      dates.push(formatDateLabel(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    const rangeData = dates.map((date) => {
+      const item = dailyMap.get(date);
+      return {
+        date,
+        amount: item?.amount ?? 0,
+        count: item?.count ?? 0,
+      };
+    });
+
+    const totalAmount = rangeData.reduce((sum, item) => sum + item.amount, 0);
+    const totalCount = rangeData.reduce((sum, item) => sum + item.count, 0);
+
+    lines.push(`总额：¥${totalAmount.toLocaleString()}`);
+    lines.push(`笔数：${totalCount} 笔`);
+    lines.push("");
+    lines.push(range === "day" ? "当日明细：" : "每日明细：");
+    for (const item of rangeData) {
+      lines.push(`- ${item.date}：¥${item.amount.toLocaleString()}（${item.count} 笔）`);
+    }
+  }
+
+  return lines.join("\n");
+};
+
+/**
  * 加载记账统计数据用于 Banner 展示。
  */
 const loadLedgerStatistics = async () => {
@@ -493,6 +658,29 @@ const loadLedgerStatistics = async () => {
  */
 const setBannerIndex = (index: number) => {
   bannerIndex.value = index;
+};
+
+/**
+ * 生成记账笔记。
+ */
+const handleGenerateLedgerNote = async () => {
+  const rangeLabel = getLedgerNoteRangeLabel(ledgerNoteRange.value);
+  toast.info(`记账笔记生成中（${rangeLabel}）`);
+  try {
+    if (!ledgerStatistics.value) {
+      await loadLedgerStatistics();
+    }
+    if (!ledgerStatistics.value) {
+      toast.error("未获取到记账统计数据");
+      return;
+    }
+    const markdown = buildLedgerNoteMarkdown(ledgerNoteRange.value, ledgerStatistics.value);
+    await data.addNoteWithMD(markdown);
+    toast.success(`已生成${rangeLabel}记账笔记`);
+  } catch (error: any) {
+    console.error("生成记账笔记失败:", error);
+    toast.error(error.response?.data?.detail || error.message || "生成记账笔记失败");
+  }
 };
 
 /**
@@ -1057,6 +1245,9 @@ const getGreeting = () => {
 }
 .banner-nav {
   @apply w-8 h-8 rounded-full flex items-center justify-center text-lg text-text bg-white/40 hover:bg-white/60 border border-border/50 backdrop-blur-sm transition shrink-0;
+}
+.banner-track {
+  margin: 0 -0.25rem;
 }
 
 

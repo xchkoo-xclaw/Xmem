@@ -20,6 +20,9 @@ const router = createRouter({
     if (to.name === 'home') {
       return { left: 0, top: 0 };
     }
+    if (to.hash) {
+      return { el: to.hash, top: 100 };
+    }
     if (savedPosition) {
       return savedPosition;
     }
