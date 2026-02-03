@@ -26,12 +26,13 @@
     </header>
 
     <main class="w-full max-w-4xl md:max-w-7xl mx-auto px-4 pb-20">
-      <div class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
+      <div ref="cardRef" class="note-editor-card bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
         <MdEditor 
+          ref="editorRef"
           v-secure-display
           v-model="content" 
           @onUploadImg="onUploadImg"
-          class="min-h-[600px] rounded-xl overflow-hidden border border-border"
+          class="min-h-[600px] rounded-xl border border-border"
           :toolbars="toolbars"
           :toolbarsExclude="['github']"
           :theme="theme.resolvedTheme"
@@ -54,9 +55,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, onUnmounted, watch, nextTick } from "vue";
 import { useRouter } from "vue-router";
-import { MdEditor, NormalToolbar, type ToolbarNames } from 'md-editor-v3';
+import { MdEditor, NormalToolbar, type ToolbarNames, type ExposeParam } from 'md-editor-v3';
 import 'md-editor-v3/lib/style.css';
 import { useDataStore } from "../stores/data";
 import { useToastStore } from "../stores/toast";
@@ -78,6 +79,9 @@ const theme = useThemeStore();
 const content = ref("");
 const saving = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
+const editorRef = ref<ExposeParam | null>(null);
+const cardRef = ref<HTMLElement | null>(null);
+const resizeRaf = ref<number | null>(null);
 
 // 自定义工具栏配置
 const toolbars: ToolbarNames[] = [
@@ -111,6 +115,51 @@ const toolbars: ToolbarNames[] = [
   'preview',
   'catalog',
 ];
+
+/**
+ * 判断当前窗口是否为手机端视口尺寸
+ */
+const isMobileViewport = () => {
+  if (typeof window === "undefined") return false;
+  return window.innerWidth <= 700;
+};
+
+/**
+ * 移动端默认关闭预览面板，避免左右分屏
+ */
+const applyMobilePreviewDefault = async () => {
+  if (!isMobileViewport()) return;
+  await nextTick();
+  editorRef.value?.togglePreview(false);
+};
+
+/**
+ * 计算上下布局时的面板与卡片高度
+ */
+const updateEditorPaneHeight = () => {
+  if (!cardRef.value) return;
+  const scroller = cardRef.value.querySelector(".md-editor-input .cm-scroller") as HTMLElement | null;
+  if (!scroller) return;
+  const rawHeight = Math.ceil(scroller.scrollHeight || scroller.clientHeight || 0);
+  const paneHeight = Math.min(1200, rawHeight > 0 ? rawHeight : 600);
+  const totalHeight = Math.min(2400, paneHeight * 2);
+  cardRef.value.style.setProperty("--note-editor-pane-height", `${paneHeight}px`);
+  cardRef.value.style.setProperty("--note-editor-total-height", `${totalHeight}px`);
+};
+
+/**
+ * 调度面板高度刷新
+ */
+const scheduleEditorPaneHeight = () => {
+  if (typeof window === "undefined") return;
+  if (resizeRaf.value !== null) {
+    cancelAnimationFrame(resizeRaf.value);
+  }
+  resizeRaf.value = requestAnimationFrame(() => {
+    resizeRaf.value = null;
+    updateEditorPaneHeight();
+  });
+};
 
 // 触发文件选择
 const triggerFileUpload = () => {
@@ -203,11 +252,26 @@ const loadNoteContent = async () => {
 // 组件挂载时加载笔记内容
 onMounted(() => {
   loadNoteContent();
+  applyMobilePreviewDefault();
+  scheduleEditorPaneHeight();
+  window.addEventListener("resize", scheduleEditorPaneHeight);
 });
 
 // 监听 noteId 变化，重新加载内容
 watch(() => props.noteId, () => {
   loadNoteContent();
+  scheduleEditorPaneHeight();
+});
+
+watch(content, () => {
+  scheduleEditorPaneHeight();
+}, { flush: "post" });
+
+onUnmounted(() => {
+  window.removeEventListener("resize", scheduleEditorPaneHeight);
+  if (resizeRaf.value !== null) {
+    cancelAnimationFrame(resizeRaf.value);
+  }
 });
 
 // 保存笔记
@@ -249,13 +313,110 @@ const handleSave = async () => {
   @apply bg-surface text-text border border-border hover:border-border/70 disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
-@media (max-width: 640px) {
+:deep(.md-editor),
+:deep(.md-editor-toolbar),
+:deep(.md-editor-input .cm-editor),
+:deep(.md-editor-input .cm-content),
+:deep(.md-editor-v-5) {
+  background-color: rgb(var(--c-surface));
+  color: rgb(var(--c-text));
+}
+
+:deep(.md-editor-input),
+:deep(.md-editor-input-wrapper),
+:deep(.md-editor-preview),
+:deep(.md-editor-preview-wrapper),
+:deep(.md-editor-v-5-preview),
+:deep(.md-editor-v-5-content) {
+  background-color: rgb(var(--c-surface-2));
+  color: rgb(var(--c-text));
+}
+
+:deep(.md-editor-input .cm-scroller),
+:deep(.cm-scroller) {
+  background-color: rgb(var(--c-surface-2));
+  color: rgb(var(--c-text));
+}
+
+@media (max-width: 1024px) {
+  .note-editor-card {
+    height: var(--note-editor-total-height, 2400px);
+    max-height: 2400px;
+    box-sizing: border-box;
+  }
+  :deep(.md-editor) {
+    display: block !important;
+    height: 100% !important;
+    min-height: 0 !important;
+  }
   :deep(.md-editor-content) {
-    flex-direction: column;
+    display: block !important;
+    flex-direction: column !important;
+    align-items: stretch;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+  :deep(.md-editor-content-wrapper) {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  :deep(.md-editor-content-wrapper > *) {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    display: block !important;
+    position: static !important;
+    float: none !important;
+  }
+  :deep(.md-editor-input),
+  :deep(.md-editor-preview) {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    display: block !important;
+    float: none !important;
+    left: auto !important;
+    right: auto !important;
   }
   :deep(.md-editor-input-wrapper),
   :deep(.md-editor-preview-wrapper) {
-    width: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: 0 0 auto !important;
+    display: block !important;
+    position: static !important;
+    float: none !important;
+    height: var(--note-editor-pane-height, 1200px) !important;
+    max-height: 1200px !important;
+    overflow: hidden !important;
+  }
+  :deep(.md-editor-input),
+  :deep(.md-editor-preview) {
+    height: 100% !important;
+    overflow: auto !important;
+  }
+  :deep(.md-editor-input .cm-editor),
+  :deep(.md-editor-input .cm-scroller),
+  :deep(.md-editor-preview .md-editor-v-5-preview) {
+    height: 100% !important;
+    overflow: auto !important;
+  }
+  :deep(.md-editor-resize),
+  :deep(.md-editor-split) {
+    display: none !important;
+  }
+  :deep(.md-editor-resize-operate) {
+    display: none !important;
+  }
+  :deep(.md-editor-input-wrapper) {
+    order: 1;
+  }
+  :deep(.md-editor-preview-wrapper) {
+    order: 2;
   }
   :deep(.md-editor-preview-wrapper) {
     border-left: 0;

@@ -74,13 +74,22 @@ export interface Todo {
 }
 
 export interface LedgerStatistics {
+  current_month: string;
+  daily_data: Array<{ date: string; amount: number; count: number }>;
   monthly_data: Array<{ month: string; amount: number; count: number }>;
   yearly_data: Array<{ month: string; amount: number; count: number }>;
+  yearly_totals: Array<{ year: number; amount: number; count: number }>;
   category_stats: Array<{ category: string; amount: number; count: number; percentage: number }>;
   current_month_total: number;
   last_month_total: number;
   month_diff: number;
   month_diff_percent: number;
+  ai_summary?: string | null;
+  budget?: { month: string; amount: number } | null;
+}
+
+export interface LedgerMonthlySummary {
+  summary: string;
 }
 
 export const useDataStore = defineStore("data", {
@@ -162,8 +171,36 @@ export const useDataStore = defineStore("data", {
         throw error;
       }
     },
-    async fetchLedgerStatistics() {
-      const { data } = await api.get("/ledger/statistics");
+    /**
+     * 获取记账统计数据。
+     */
+    async fetchLedgerStatistics(params?: { month?: string; year?: number }) {
+      const { data } = await api.get("/ledger/statistics", { params });
+      return data;
+    },
+    /**
+     * 生成指定月份的记账 AI 总结。
+     */
+    async generateLedgerMonthlySummary(month: string): Promise<LedgerMonthlySummary> {
+      const { data } = await api.post("/ledger/statistics/ai-summary", undefined, {
+        params: { month },
+        timeout: 30000,
+      });
+      return data;
+    },
+    /**
+     * 获取指定月份的预算数据。
+     */
+    async fetchLedgerBudget(month?: string) {
+      const params = month ? { month } : {};
+      const { data } = await api.get("/ledger/budget", { params });
+      return data;
+    },
+    /**
+     * 创建或更新指定月份的预算。
+     */
+    async upsertLedgerBudget(month: string, amount: number) {
+      const { data } = await api.put("/ledger/budget", { month, amount });
       return data;
     },
     async fetchTodos(completed?: boolean) {

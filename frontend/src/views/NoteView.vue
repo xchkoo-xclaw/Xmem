@@ -28,7 +28,7 @@
     <main class="w-full max-w-4xl mx-auto px-4 pb-20">
       <div v-if="displayedNote" class="bg-surface border border-border rounded-3xl shadow-card p-4 md:p-6 lg:p-8 mx-auto">
         <!-- 笔记内容 -->
-        <div class="mb-6" @dblclick="handleEdit">
+        <div class="mb-6 note-preview" @dblclick="handleEdit">
            <MdPreview v-secure-display :modelValue="displayedNote.body_md || ''" :theme="theme.resolvedTheme" />
         </div>
 
@@ -190,7 +190,7 @@
       <transition name="fade-soft">
         <div
           v-if="(aiSummaryLoading || aiSummary) && !isShareView"
-          class="bg-surface border border-border rounded-3xl shadow-card p-4 md:p-6 lg:p-8 mx-auto mt-4 relative overflow-hidden group"
+          class="bg-surface border border-border rounded-3xl shadow-card p-4 md:p-6 lg:p-8 mx-auto mt-4 relative overflow-hidden group note-preview"
           :class="{ 'ai-loading': aiSummaryLoading }"
         >
           <div class="flex items-center justify-between mb-3">
@@ -619,6 +619,16 @@ const handleDelete = () => {
   border-color: rgb(255, 90, 180);
   box-shadow: 0 0 18px rgba(255, 90, 180, 0.4);
   animation: ai-rgb-pulse 2.4s ease-in-out infinite;
+}
+
+.note-preview :deep(.md-editor-preview-wrapper),
+.note-preview :deep(.md-editor-preview),
+.note-preview :deep(.md-editor-preview .md-editor-v-5-preview),
+.note-preview :deep(.md-editor-v-5-preview),
+.note-preview :deep(.md-editor-v-5),
+.note-preview :deep(.md-editor-v-5-content) {
+  background-color: rgb(var(--c-surface));
+  color: rgb(var(--c-text));
 }
 
 .ai-copy-btn {

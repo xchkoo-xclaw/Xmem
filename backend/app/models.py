@@ -21,6 +21,8 @@ class User(Base):
 
     notes = relationship("Note", back_populates="owner", cascade="all, delete-orphan")
     ledgers = relationship("LedgerEntry", back_populates="owner", cascade="all, delete-orphan")
+    ledger_budgets = relationship("LedgerBudget", back_populates="owner", cascade="all, delete-orphan")
+    ledger_monthly_summaries = relationship("LedgerMonthlySummary", back_populates="owner", cascade="all, delete-orphan")
     todos = relationship("Todo", back_populates="owner", cascade="all, delete-orphan")
 
 
@@ -74,6 +76,33 @@ class LedgerEntry(Base):
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     owner = relationship("User", back_populates="ledgers")
+
+
+class LedgerBudget(Base):
+    __tablename__ = "ledger_budgets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    month = Column(String(7), index=True, nullable=False)
+    amount = Column(Float, nullable=False)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+    owner = relationship("User", back_populates="ledger_budgets")
+
+
+class LedgerMonthlySummary(Base):
+    __tablename__ = "ledger_monthly_summaries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    month = Column(String(7), index=True, nullable=False)
+    summary = Column(Text, nullable=True)
+    last_entry_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+    owner = relationship("User", back_populates="ledger_monthly_summaries")
 
 
 class Todo(Base):

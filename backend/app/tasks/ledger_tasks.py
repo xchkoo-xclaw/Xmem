@@ -56,6 +56,89 @@ def parse_utc_time(time_str: str | None) -> str | None:
         return None
 
 
+def _parse_month_str(value: str) -> tuple[int, int]:
+    """
+    解析 YYYY-MM 字符串并返回年和月。
+    """
+    parsed = datetime.strptime(value, "%Y-%m")
+    return parsed.year, parsed.month
+
+
+def _build_ledger_summary_text(entries: list[models.LedgerEntry]) -> str:
+    """
+    构建用于 AI 总结的记账文本。
+    """
+    lines: list[str] = []
+    for entry in entries:
+        entry_date = entry.event_time or entry.created_at
+        date_label = entry_date.strftime("%Y-%m-%d")
+        amount = entry.amount or 0
+        currency = entry.currency or "CNY"
+        category = entry.category or "未分类"
+        merchant = entry.merchant or "未知商家"
+        lines.append(f"{date_label} | {amount} {currency} | {category} | {merchant}")
+    return "\n".join(lines)
+
+
+@celery_app.task(name="ledger.generate_monthly_summary")
+def generate_ledger_monthly_summary_task(user_id: int, month: str) -> dict:
+    """
+    Celery 任务：生成并持久化记账月度总结。
+    """
+    session: Session = SyncSessionLocal()
+    try:
+        year, month_value = _parse_month_str(month)
+        entries = (
+            session.query(models.LedgerEntry)
+            .filter(models.LedgerEntry.user_id == user_id)
+            .filter(models.LedgerEntry.status == "completed")
+            .filter(models.LedgerEntry.amount.isnot(None))
+            .all()
+        )
+
+        target_entries: list[models.LedgerEntry] = []
+        for entry in entries:
+            entry_date = entry.event_time or entry.created_at
+            if entry_date.year == year and entry_date.month == month_value:
+                target_entries.append(entry)
+
+        if not target_entries:
+            return {"status": "skipped", "reason": "no_entries"}
+
+        from ..services import ai as ai_service
+
+        summary_text = _build_ledger_summary_text(target_entries)
+        summary = ai_service.generate_ledger_monthly_summary(summary_text)
+        last_entry_at = max(entry.updated_at or entry.created_at for entry in target_entries)
+
+        summary_record = (
+            session.query(models.LedgerMonthlySummary)
+            .filter(models.LedgerMonthlySummary.user_id == user_id)
+            .filter(models.LedgerMonthlySummary.month == month)
+            .first()
+        )
+        if summary_record:
+            summary_record.summary = summary
+            summary_record.last_entry_at = last_entry_at
+        else:
+            summary_record = models.LedgerMonthlySummary(
+                user_id=user_id,
+                month=month,
+                summary=summary,
+                last_entry_at=last_entry_at,
+            )
+            session.add(summary_record)
+
+        session.commit()
+        return {"status": "completed", "summary_id": summary_record.id}
+    except Exception as error:
+        logger.error(f"生成月度总结失败: {str(error)}")
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
 @celery_app.task(name="ledger.merge_and_analyze")
 def merge_text_and_analyze(ocr_text: str, original_text: str | None = None, entry_id: int | None = None) -> dict:
     """

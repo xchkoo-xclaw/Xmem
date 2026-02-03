@@ -71,3 +71,23 @@ def generate_note_todos(note_text: str) -> list[str]:
         if title:
             titles.append(title)
     return titles[:10]
+
+
+def generate_ledger_monthly_summary(ledger_text: str) -> str:
+    """生成记账月度总结。"""
+    client = _get_client()
+    prompt = (
+        "你是记账分析助手。请基于用户当月记账记录输出简洁总结，要求："
+        "1) 使用中文；2) 用 Markdown 列表呈现 3-6 条要点；"
+        "3) 包含主要支出结构与可能的节省建议；"
+        "4) 不要输出任何额外说明。"
+    )
+    response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": ledger_text},
+        ],
+        stream=False,
+    )
+    return response.choices[0].message.content.strip()
