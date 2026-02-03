@@ -4,12 +4,12 @@
 
 ## ✨ 功能特性
 
-- 📝 **笔记管理** - 快速记录和管理个人笔记
+- 📝 **笔记管理** - 快速记录和管理个人笔记，支持导出为csv文件和markdown文件，ai智能总结
 - 💰 **智能记账** - 支持自然语言输入，AI 自动识别金额、分类和商户信息
-- ✅ **待办事项** - 简洁的任务管理功能
+- ✅ **待办事项** - 简洁的任务管理功能，支持任务组，ai自动转换待办
 - 🔐 **用户认证** - 安全的用户注册和登录系统
 - 🖥️ **多端支持** - Web 应用和 Electron 桌面应用
-- 🐳 **容器化部署** - 使用 Docker Compose 一键部署
+- 🐳 **效率部署** - 使用 Docker Compose 一键部署，github action自动CICD
 
 ## 🛠️ 技术栈
 
@@ -33,6 +33,7 @@
 
 ### 部署
 - **Docker Compose** - 多容器编排
+- **Github Action** - 自动测试部署
 
 ## 📁 项目结构
 
@@ -162,26 +163,6 @@ npm run dev
 ```bash
 npm start
 ```
-
-## 🔧 配置说明
-
-### 数据库配置
-
-默认配置（docker-compose.yml）：
-- 数据库：PostgreSQL 16
-- 用户名：postgres
-- 密码：postgres
-- 数据库名：xmem
-- 端口：5432
-
-### 环境变量
-
-#### 后端
-- `DATABASE_URL` - 数据库连接字符串
-- `SECRET_KEY` - JWT 密钥（用于生成 token）
-
-#### 前端
-- `VITE_API_URL` - 后端 API 地址
 
 ## 🧪 开发指南
 
