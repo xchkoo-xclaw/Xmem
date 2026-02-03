@@ -33,6 +33,8 @@ class Note(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     body_md = Column(Text, nullable=False)  # Markdown 格式内容
     ai_summary = Column(Text, nullable=True)
+    is_ledger_note = Column(Boolean, default=False, nullable=False)
+    ledger_month = Column(String(7), nullable=True)
     is_pinned = Column(Boolean, default=False, nullable=False)  # 是否置顶
     is_shared = Column(Boolean, default=False, nullable=False)  # 是否分享
     share_uuid = Column(String(64), unique=True, index=True, nullable=True)  # 分享固定UUID

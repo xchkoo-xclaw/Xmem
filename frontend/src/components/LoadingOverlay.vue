@@ -17,7 +17,7 @@
       <div class="flex flex-col items-center gap-4">
         <div class="relative h-12 w-12">
           <div class="absolute inset-0 rounded-full border-4 border-gray-200" />
-          <div class="absolute inset-0 rounded-full border-4 border-accent border-t-transparent animate-spin" />
+          <div class="absolute inset-0 rounded-full border-4 border-gray-600 border-t-transparent animate-spin" />
         </div>
 
         <div class="flex items-center gap-2 text-sm font-medium text-gray-600">

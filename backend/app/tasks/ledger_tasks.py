@@ -80,6 +80,22 @@ def _build_ledger_summary_text(entries: list[models.LedgerEntry]) -> str:
     return "\n".join(lines)
 
 
+def _sync_ledger_note_summary(session: Session, user_id: int, month: str, summary: str) -> None:
+    """
+    将月度记账 AI 总结写入对应的记账笔记。
+    """
+    note = (
+        session.query(models.Note)
+        .filter(models.Note.user_id == user_id)
+        .filter(models.Note.is_ledger_note.is_(True))
+        .filter(models.Note.ledger_month == month)
+        .order_by(models.Note.created_at.desc())
+        .first()
+    )
+    if note:
+        note.ai_summary = summary
+
+
 @celery_app.task(name="ledger.generate_monthly_summary")
 def generate_ledger_monthly_summary_task(user_id: int, month: str) -> dict:
     """
@@ -129,6 +145,7 @@ def generate_ledger_monthly_summary_task(user_id: int, month: str) -> dict:
             )
             session.add(summary_record)
 
+        _sync_ledger_note_summary(session, user_id, month, summary)
         session.commit()
         return {"status": "completed", "summary_id": summary_record.id}
     except Exception as error:

@@ -73,22 +73,64 @@
         </div>
 
         <div
-          id="monthly-summary"
+          id="ledger-note"
           class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8 relative overflow-hidden group"
           :class="{ 'ai-loading': summaryGenerating }"
         >
+          <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+            <div>
+              <h2 class="text-lg font-bold text-text">记账笔记 · 月度 AI 总结</h2>
+              <p class="text-xs text-muted mt-1">记账笔记与 AI 总结同步更新</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+              <span
+                v-if="summaryStats?.ledger_note_id"
+                class="px-2 py-1 rounded-full bg-green-50 text-green-600 border border-green-100"
+              >
+                已生成记账笔记
+              </span>
+              <span
+                v-else
+                class="px-2 py-1 rounded-full bg-surface2 text-muted border border-border"
+              >
+                尚未生成记账笔记
+              </span>
+            </div>
+          </div>
           <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <h2 class="text-lg font-bold text-text">月度 AI 总结</h2>
             <div class="flex items-center gap-2 text-sm text-muted">
-              <button class="btn ghost px-2 py-1" @click="shiftSummaryMonth(-1, '#monthly-summary')">上月</button>
+              <button class="btn ghost px-2 py-1" @click="shiftSummaryMonth(-1, '#ledger-note')">上月</button>
               <span>{{ summaryMonthLabel }}</span>
-              <button class="btn ghost px-2 py-1" @click="shiftSummaryMonth(1, '#monthly-summary')">下月</button>
+              <button class="btn ghost px-2 py-1" @click="shiftSummaryMonth(1, '#ledger-note')">下月</button>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 text-sm text-muted">
               <button
-                class="btn ghost px-2 py-1"
+                v-if="!summaryStats?.ledger_note_id"
+                class="btn ghost px-3 py-1.5"
+                @click="handleGenerateLedgerNote"
+                :disabled="ledgerNoteGenerating"
+              >
+                {{ ledgerNoteGenerating ? "生成中..." : "生成记账笔记" }}
+              </button>
+              <button
+                v-if="summaryStats?.ledger_note_id"
+                class="btn ghost px-3 py-1.5"
+                @click="handleLedgerNoteJump"
+              >
+                查看记账笔记
+              </button>
+              <button
+                class="btn ghost px-3 py-1.5"
                 @click="handleGenerateSummary"
                 :disabled="summaryGenerating"
               >
-                {{ summaryGenerating ? "生成中..." : "手动生成" }}
+                {{
+                  summaryGenerating
+                    ? "生成中..."
+                    : summaryStats?.ai_summary
+                      ? "重新生成AI总结"
+                      : "生成AI总结"
+                }}
               </button>
             </div>
           </div>
@@ -239,12 +281,13 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
-import { BarChart, LineChart, PieChart } from "echarts/charts";
+import { BarChart, LineChart, PieChart, RadarChart } from "echarts/charts";
 import {
   TitleComponent,
   TooltipComponent,
   GridComponent,
-  LegendComponent
+  LegendComponent,
+  RadarComponent
 } from "echarts/components";
 import { MdPreview } from "md-editor-v3";
 import "md-editor-v3/lib/style.css";
@@ -260,10 +303,12 @@ use([
   BarChart,
   LineChart,
   PieChart,
+  RadarChart,
   TitleComponent,
   TooltipComponent,
   GridComponent,
-  LegendComponent
+  LegendComponent,
+  RadarComponent
 ]);
 
 const router = useRouter();
@@ -289,6 +334,7 @@ const budgetInput = ref<number | null>(null);
 const budgetAmount = ref<number | null>(null);
 const isSavingBudget = ref(false);
 const summaryGenerating = ref(false);
+const ledgerNoteGenerating = ref(false);
 const summaryError = ref("");
 const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
 const calendarMonth = ref<string>("");
@@ -460,46 +506,70 @@ const yearlyComparisonOption = computed(() => {
 
   const years = yearlyCompareStats.value.yearly_totals.map((item) => `${item.year}年`);
   const amounts = yearlyCompareStats.value.yearly_totals.map((item) => item.amount);
+  const maxAmount = Math.max(1, ...amounts);
+  const radarMax = Math.ceil(maxAmount * 1.1);
 
   return {
-    grid: {
-      left: "10%",
-      right: "10%",
-      top: "12%",
-      bottom: "18%"
-    },
-    xAxis: {
-      type: "category",
-      data: years,
-      axisLabel: {
-        fontSize: 11,
-        color: chartAxisLabelColor.value
-      }
-    },
-    yAxis: {
-      type: "value",
-      axisLabel: {
-        formatter: (value: number) => `¥${(value / 1000).toFixed(0)}k`,
-        fontSize: 12,
-        color: chartAxisLabelColor.value
+    radar: {
+      shape: "circle",
+      radius: "68%",
+      indicator: years.map((name) => ({
+        name,
+        max: radarMax
+      })),
+      axisName: {
+        color: chartAxisLabelColor.value,
+        fontSize: 11
+      },
+      splitLine: {
+        lineStyle: {
+          color: theme.resolvedTheme === "dark" ? "rgba(255,255,255,0.12)" : "rgba(15,23,42,0.08)"
+        }
+      },
+      splitArea: {
+        areaStyle: {
+          color:
+            theme.resolvedTheme === "dark"
+              ? ["rgba(255,255,255,0.02)", "rgba(255,255,255,0.05)"]
+              : ["rgba(15,23,42,0.02)", "rgba(15,23,42,0.05)"]
+        }
+      },
+      axisLine: {
+        lineStyle: {
+          color: theme.resolvedTheme === "dark" ? "rgba(255,255,255,0.2)" : "rgba(15,23,42,0.12)"
+        }
       }
     },
     series: [
       {
-        type: "bar",
-        data: amounts,
-        itemStyle: {
-          color: "#3B82F6",
-          borderRadius: [4, 4, 0, 0]
+        type: "radar",
+        data: [
+          {
+            value: amounts,
+            name: "年度支出"
+          }
+        ],
+        lineStyle: {
+          width: 2,
+          color: "#3B82F6"
         },
-        barWidth: "50%"
+        itemStyle: {
+          color: "#3B82F6"
+        },
+        areaStyle: {
+          color: "rgba(59, 130, 246, 0.22)"
+        },
+        symbol: "circle",
+        symbolSize: 6
       }
     ],
     tooltip: {
-      trigger: "axis",
+      trigger: "item",
       formatter: (params: any) => {
-        const param = params[0];
-        return `${param.name}<br/>¥${param.value.toLocaleString()}`;
+        const data = params?.data?.value || [];
+        return years
+          .map((label, index) => `${label}：¥${(data[index] || 0).toLocaleString()}`)
+          .join("<br/>");
       }
     }
   };
@@ -623,6 +693,35 @@ const shiftMonthValue = (monthValue: string, offset: number) => {
 const resolveSixMonthRange = (endMonth: string) => {
   const startMonth = shiftMonthValue(endMonth, -5);
   return { startMonth, endMonth };
+};
+
+const buildMonthlyLedgerNoteMarkdown = (statistics: LedgerStatistics) => {
+  const monthLabel = formatMonthLabel(statistics.current_month);
+  const monthTotal = statistics.current_month_total || 0;
+  const monthCount = statistics.daily_data.reduce((sum, item) => sum + item.count, 0);
+  const lines: string[] = [];
+  lines.push(`# 记账笔记（${monthLabel}）`);
+  lines.push("");
+  lines.push(`统计月份：${statistics.current_month}`);
+  lines.push("");
+  lines.push(`本月总额：¥${monthTotal.toLocaleString()}`);
+  lines.push(`本月笔数：${monthCount} 笔`);
+  if (statistics.budget) {
+    const remaining = statistics.budget.amount - monthTotal;
+    const remainingLabel = remaining >= 0 ? "剩余" : "超出";
+    lines.push(
+      `预算：¥${statistics.budget.amount.toLocaleString()}，${remainingLabel} ¥${Math.abs(remaining).toLocaleString()}`
+    );
+  }
+  const topDays = [...statistics.daily_data].sort((a, b) => b.amount - a.amount).slice(0, 5);
+  if (topDays.length) {
+    lines.push("");
+    lines.push("金额最高的日期：");
+    for (const day of topDays) {
+      lines.push(`- ${day.date}：¥${day.amount.toLocaleString()}（${day.count} 笔）`);
+    }
+  }
+  return lines.join("\n");
 };
 
 const calendarMonthLabel = computed(() => {
@@ -932,6 +1031,28 @@ const resolveSummaryErrorMessage = (error: any) => {
   return message || "AI 总结生成失败";
 };
 
+const handleGenerateLedgerNote = async () => {
+  const targetMonth = resolveMonthValue(summaryMonth.value, summaryStats.value?.current_month);
+  ledgerNoteGenerating.value = true;
+  try {
+    const stats = await data.fetchLedgerStatistics({ month: targetMonth });
+    const markdown = buildMonthlyLedgerNoteMarkdown(stats);
+    const aiSummary = summaryStats.value?.ai_summary?.trim();
+    await data.addNoteWithMD(markdown, {
+      is_ledger_note: true,
+      ledger_month: targetMonth,
+      ai_summary: aiSummary || undefined,
+    });
+    await loadSummaryStats(targetMonth);
+    toast.success("记账笔记已生成");
+  } catch (error: any) {
+    console.error("生成记账笔记失败:", error);
+    toast.error(error.response?.data?.detail || error.message || "生成记账笔记失败");
+  } finally {
+    ledgerNoteGenerating.value = false;
+  }
+};
+
 /**
  * 手动生成当前月份的 AI 总结。
  */
@@ -955,9 +1076,8 @@ const handleGenerateSummary = async () => {
         current_month: targetMonth,
         ai_summary: summary,
       };
-    } else {
-      await loadSummaryStats(targetMonth);
     }
+    await loadSummaryStats(targetMonth);
     toast.success("AI 总结已生成");
   } catch (error: any) {
     const message = resolveSummaryErrorMessage(error);
@@ -966,6 +1086,12 @@ const handleGenerateSummary = async () => {
   } finally {
     summaryGenerating.value = false;
   }
+};
+
+const handleLedgerNoteJump = () => {
+  const noteId = summaryStats.value?.ledger_note_id;
+  if (!noteId) return;
+  router.push({ name: "note-view", params: { noteId } });
 };
 
 /**

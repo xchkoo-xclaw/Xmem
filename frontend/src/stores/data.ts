@@ -5,6 +5,8 @@ export interface Note {
   id: number;
   body_md: string;
   ai_summary?: string | null;
+  is_ledger_note?: boolean;
+  ledger_month?: string | null;
   images?: string[] | null;
   files?: Array<{ name: string; url: string; size: number }> | null;
   attachment_url?: string;
@@ -85,6 +87,7 @@ export interface LedgerStatistics {
   month_diff: number;
   month_diff_percent: number;
   ai_summary?: string | null;
+  ledger_note_id?: number | null;
   budget?: { month: string; amount: number } | null;
 }
 
@@ -209,11 +212,18 @@ export const useDataStore = defineStore("data", {
       this.todos = data || [];
       this.sortTodos();
     },
-    async addNoteWithMD(body_md: string) {
-      const { data } = await api.post("/notes", { 
-        body_md
+    async addNoteWithMD(
+      body_md: string,
+      options?: { is_ledger_note?: boolean; ledger_month?: string; ai_summary?: string },
+    ) {
+      const { data } = await api.post("/notes", {
+        body_md,
+        ai_summary: options?.ai_summary,
+        is_ledger_note: options?.is_ledger_note,
+        ledger_month: options?.ledger_month,
       });
       this.notes.unshift(data);
+      return data;
     },
     async uploadImage(file: File): Promise<string> {
       const formData = new FormData();

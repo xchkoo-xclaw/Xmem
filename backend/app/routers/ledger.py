@@ -78,6 +78,20 @@ def _build_ledger_summary_text(entries: list[models.LedgerEntry]) -> str:
         lines.append(f"{date_label} | {amount} {currency} | {category} | {merchant}")
     return "\n".join(lines)
 
+
+def _get_ledger_note_for_month(user_id: int, month: str):
+    """查询指定月份的记账笔记。"""
+    return (
+        select(models.Note)
+        .where(
+            models.Note.user_id == user_id,
+            models.Note.is_ledger_note.is_(True),
+            models.Note.ledger_month == month,
+        )
+        .order_by(models.Note.created_at.desc())
+        .limit(1)
+    )
+
 #用于获取当前用户的所有记账条目（支持分页）
 @router.get("", response_model=schemas.LedgerListResponse)
 async def list_ledgers(
@@ -439,6 +453,11 @@ async def generate_ledger_ai_summary(
         )
         session.add(summary_record)
 
+    note_result = await session.execute(_get_ledger_note_for_month(current_user.id, target_month))
+    ledger_note = note_result.scalar_one_or_none()
+    if ledger_note:
+        ledger_note.ai_summary = summary
+
     await session.commit()
     return schemas.LedgerMonthlySummaryOut(summary=summary)
 
@@ -626,21 +645,69 @@ async def get_ledger_statistics(
         schemas.LedgerBudgetOut(month=budget.month, amount=budget.amount) if budget else None
     )
 
-    # 读取已生成的月度总结
     ai_summary: str | None = None
-    summary = None
+    summary_record = None
     try:
-        summary_record = await session.execute(
+        summary_record_result = await session.execute(
             select(models.LedgerMonthlySummary).where(
                 models.LedgerMonthlySummary.user_id == current_user.id,
                 models.LedgerMonthlySummary.month == current_month_str,
             )
         )
-        summary = summary_record.scalar_one_or_none()
-        if summary and summary.summary:
-            ai_summary = summary.summary
+        summary_record = summary_record_result.scalar_one_or_none()
+        if summary_record and summary_record.summary:
+            ai_summary = summary_record.summary
     except SQLAlchemyError as error:
         logger.warning(f"读取记账月度总结失败: {error}")
+
+    ledger_note_id: int | None = None
+    note_result = await session.execute(_get_ledger_note_for_month(current_user.id, current_month_str))
+    ledger_note = note_result.scalar_one_or_none()
+    changed = False
+    if ledger_note:
+        ledger_note_id = ledger_note.id
+        note_summary = ledger_note.ai_summary
+        record_summary = summary_record.summary if summary_record else None
+        if note_summary and record_summary and note_summary != record_summary:
+            note_updated = ledger_note.updated_at or ledger_note.created_at
+            record_updated = summary_record.updated_at or summary_record.created_at
+            if note_updated and record_updated and note_updated > record_updated:
+                summary_record.summary = note_summary
+                summary_record.updated_at = models.utc_now()
+                ai_summary = note_summary
+                changed = True
+            else:
+                ledger_note.ai_summary = record_summary
+                ai_summary = record_summary
+                changed = True
+        elif record_summary and not note_summary:
+            ledger_note.ai_summary = record_summary
+            ai_summary = record_summary
+            changed = True
+        elif note_summary and not record_summary:
+            if summary_record:
+                summary_record.summary = note_summary
+                summary_record.updated_at = models.utc_now()
+            else:
+                last_entry_at = (
+                    max(entry.updated_at or entry.created_at for entry in current_month_entries)
+                    if current_month_entries
+                    else None
+                )
+                summary_record = models.LedgerMonthlySummary(
+                    user_id=current_user.id,
+                    month=current_month_str,
+                    summary=note_summary,
+                    last_entry_at=last_entry_at,
+                )
+                session.add(summary_record)
+            ai_summary = note_summary
+            changed = True
+        elif note_summary and not ai_summary:
+            ai_summary = note_summary
+
+    if changed:
+        await session.commit()
     
     return schemas.LedgerStatisticsResponse(
         current_month=current_month_str,
@@ -654,6 +721,7 @@ async def get_ledger_statistics(
         month_diff=month_diff,
         month_diff_percent=month_diff_percent,
         ai_summary=ai_summary,
+        ledger_note_id=ledger_note_id,
         budget=budget_out,
     )
 

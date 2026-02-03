@@ -2,6 +2,7 @@ import os
 import re
 import inspect
 import uuid
+import datetime as dt
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from fastapi.responses import FileResponse
@@ -14,6 +15,7 @@ from ..db import get_session
 from ..auth import get_current_user, get_optional_user
 from ..utils.file_utils import save_uploaded_img, save_uploaded_file
 from ..services.ai import generate_note_summary, generate_note_todos
+from ..services import ai as ai_service
 
 router = APIRouter(prefix="/notes", tags=["notes"])
 public_router = APIRouter(prefix="/notes", tags=["notes"])
@@ -89,6 +91,8 @@ def build_note_out(note: models.Note) -> schemas.NoteOut:
         id=note.id,
         body_md=note.body_md,
         ai_summary=getattr(note, "ai_summary", None),
+        is_ledger_note=bool(getattr(note, "is_ledger_note", False)),
+        ledger_month=getattr(note, "ledger_month", None),
         is_pinned=bool(note.is_pinned),
         is_shared=bool(getattr(note, "is_shared", False)),
         share_uuid=getattr(note, "share_uuid", None),
@@ -117,6 +121,28 @@ def build_share_link(note_uuid: str, share_user_id: int, request: Request) -> st
     origin = request.headers.get("origin")
     base_url = (origin or str(request.base_url)).rstrip("/")
     return f"{base_url}/view-share-note/?note-uuid={note_uuid}&share-user-id={share_user_id}"
+
+
+def _parse_ledger_month(value: str) -> dt.datetime:
+    """解析 YYYY-MM 字符串并返回该月第一天。"""
+    try:
+        return dt.datetime.strptime(value, "%Y-%m")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="月份格式必须为 YYYY-MM") from exc
+
+
+def _build_ledger_summary_text(entries: list[models.LedgerEntry]) -> str:
+    """构建用于 AI 总结的记账文本。"""
+    lines: list[str] = []
+    for entry in entries:
+        entry_date = entry.event_time or entry.created_at
+        date_label = entry_date.strftime("%Y-%m-%d")
+        amount = entry.amount or 0
+        currency = entry.currency or "CNY"
+        category = entry.category or "未分类"
+        merchant = entry.merchant or "未知商家"
+        lines.append(f"{date_label} | {amount} {currency} | {category} | {merchant}")
+    return "\n".join(lines)
 
 
 def build_share_note_out(
@@ -242,7 +268,10 @@ async def create_note(
         raise HTTPException(status_code=400, detail="笔记内容不能为空")
     note = models.Note(
         user_id=current_user.id,
-        body_md=payload.body_md
+        body_md=payload.body_md,
+        ai_summary=payload.ai_summary,
+        is_ledger_note=bool(payload.is_ledger_note) if payload.is_ledger_note is not None else False,
+        ledger_month=payload.ledger_month,
     )
     session.add(note)
     await session.commit()
@@ -577,10 +606,53 @@ async def ai_note_summary(
     note = result.scalars().first()
     if not note:
         raise HTTPException(status_code=404, detail="笔记不存在")
-    if not note.body_md or not note.body_md.strip():
-        raise HTTPException(status_code=400, detail="笔记内容不能为空")
     try:
-        summary = generate_note_summary(note.body_md)
+        if getattr(note, "is_ledger_note", False):
+            if not note.ledger_month:
+                raise HTTPException(status_code=400, detail="记账笔记缺少月份信息")
+            parsed = _parse_ledger_month(note.ledger_month)
+            query = select(models.LedgerEntry).where(
+                models.LedgerEntry.user_id == current_user.id,
+                models.LedgerEntry.status == "completed",
+                models.LedgerEntry.amount.isnot(None),
+            )
+            entries_result = await session.execute(query)
+            entries = entries_result.scalars().all()
+            target_entries: list[models.LedgerEntry] = []
+            for entry in entries:
+                entry_date = entry.event_time or entry.created_at
+                if entry_date.year == parsed.year and entry_date.month == parsed.month:
+                    target_entries.append(entry)
+            if not target_entries:
+                raise HTTPException(status_code=400, detail="该月份暂无可用记账数据")
+            summary_text = _build_ledger_summary_text(target_entries)
+            summary = ai_service.generate_ledger_monthly_summary(summary_text)
+            if not summary or not summary.strip():
+                raise HTTPException(status_code=400, detail="AI 返回空总结内容")
+            last_entry_at = max(entry.updated_at or entry.created_at for entry in target_entries)
+            summary_record_result = await session.execute(
+                select(models.LedgerMonthlySummary).where(
+                    models.LedgerMonthlySummary.user_id == current_user.id,
+                    models.LedgerMonthlySummary.month == note.ledger_month,
+                )
+            )
+            summary_record = summary_record_result.scalar_one_or_none()
+            if summary_record:
+                summary_record.summary = summary
+                summary_record.last_entry_at = last_entry_at
+                summary_record.updated_at = models.utc_now()
+            else:
+                summary_record = models.LedgerMonthlySummary(
+                    user_id=current_user.id,
+                    month=note.ledger_month,
+                    summary=summary,
+                    last_entry_at=last_entry_at,
+                )
+                session.add(summary_record)
+        else:
+            if not note.body_md or not note.body_md.strip():
+                raise HTTPException(status_code=400, detail="笔记内容不能为空")
+            summary = generate_note_summary(note.body_md)
         note.ai_summary = summary
         await session.commit()
         await session.refresh(note)
