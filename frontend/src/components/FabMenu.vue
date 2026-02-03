@@ -1,14 +1,16 @@
 <template>
   <Teleport to="body">
-    <div class="fixed bottom-6 right-6 flex flex-col items-end gap-3">
+    <div v-if="open && isMobile" class="fab-overlay" @click="closeMenu"></div>
+    <div class="fab-wrapper" :class="{ 'fab-collapsed': shouldCollapse }">
     <!-- 刷新按钮（始终显示，位置会根据菜单是否打开而改变） -->
-    <button class="fab-main" @click="handleRefresh" title="刷新页面">
+    <button v-if="!isMobile || open" class="fab-main" @click="handleRefresh" title="刷新页面">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
       </svg>
     </button>
     <!-- 主题切换按钮（始终显示，位置会根据菜单是否打开而改变） -->
     <button
+      v-if="!isMobile || open"
       class="fab-main"
       :class="{ 'opacity-60 cursor-not-allowed': isThemeToggleLocked }"
       :title="themeButtonTitle"
@@ -99,7 +101,7 @@
       </button>
     </transition-group>
     <!-- 主菜单按钮 -->
-    <button class="fab-main" @click="open = !open">
+    <button class="fab-main" @click="toggleMenu">
       <span v-if="open">×</span>
       <span v-else>＋</span>
     </button>
@@ -108,7 +110,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useThemeStore } from "../stores/theme";
 
 defineEmits<{
@@ -121,10 +123,12 @@ defineEmits<{
 }>();
 
 const open = ref(false);
+const isMobile = ref(false);
 const theme = useThemeStore();
 
 const displayedTheme = computed(() => (theme.selectedMode === "auto" ? theme.resolvedTheme : theme.selectedMode));
 const isThemeToggleLocked = computed(() => theme.selectedMode === "auto");
+const shouldCollapse = computed(() => isMobile.value && !open.value);
 
 const themeButtonTitle = computed(() => {
   if (isThemeToggleLocked.value) return "已启用跟随系统，主题切换已锁定";
@@ -140,17 +144,53 @@ const handleThemeToggle = () => {
   theme.setMode(displayedTheme.value === "dark" ? "light" : "dark");
 };
 
+/** 刷新页面 */
 const handleRefresh = () => {
   location.reload();
 };
+
+/** 更新移动端判定 */
+const updateIsMobile = () => {
+  isMobile.value = window.matchMedia("(max-width: 640px)").matches;
+};
+
+/** 切换主菜单展开状态 */
+const toggleMenu = () => {
+  open.value = !open.value;
+};
+
+/** 关闭主菜单 */
+const closeMenu = () => {
+  open.value = false;
+};
+
+onMounted(() => {
+  updateIsMobile();
+  window.addEventListener("resize", updateIsMobile);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", updateIsMobile);
+});
 </script>
 
 <style scoped>
+.fab-wrapper {
+  @apply fixed bottom-6 right-6 flex flex-col items-end gap-3 transition-transform duration-200 z-50;
+}
+.fab-overlay {
+  @apply fixed inset-0 z-40;
+}
 .fab-main {
   @apply w-14 h-14 rounded-full bg-accent text-on-accent text-2xl shadow-float flex items-center justify-center transition-transform duration-200 active:scale-95;
 }
 .fab-sub {
   @apply px-3 py-2 rounded-full bg-surface shadow-float text-sm text-text border border-border hover:-translate-y-1 transition-all duration-200;
+}
+.fab-collapsed {
+  right: -28px;
+  bottom: 16px;
+  transform: none;
 }
 .fade-enter-active,
 .fade-leave-active {
@@ -160,5 +200,11 @@ const handleRefresh = () => {
 .fade-leave-to {
   opacity: 0;
   transform: translateY(10px);
+}
+@media (min-width: 641px) {
+  .fab-collapsed {
+    right: 1.5rem;
+    bottom: 1.5rem;
+  }
 }
 </style>

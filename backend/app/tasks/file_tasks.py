@@ -45,3 +45,47 @@ async def _cleanup_logic():
             await session.delete(f)
         
         await session.commit()
+
+
+@celery_app.task
+def cleanup_expired_exports():
+    """
+    清理过期导出文件并标记为已过期
+    """
+    asyncio.run(_cleanup_expired_exports_logic())
+
+
+async def _cleanup_expired_exports_logic():
+    """
+    扫描超过一周的导出记录并删除导出文件
+    """
+    async with AsyncSessionLocal() as session:
+        limit_time = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) - dt.timedelta(days=7)
+        stmt = select(models.ExportJob).where(
+            models.ExportJob.created_at < limit_time,
+            models.ExportJob.status != "expired",
+        )
+        result = await session.execute(stmt)
+        jobs = result.scalars().all()
+        if not jobs:
+            return
+        for job in jobs:
+            if job.file_path and os.path.exists(job.file_path):
+                try:
+                    os.remove(job.file_path)
+                except Exception:
+                    pass
+            if job.report_path and os.path.exists(job.report_path):
+                try:
+                    os.remove(job.report_path)
+                except Exception:
+                    pass
+            job.status = "expired"
+            job.file_path = None
+            job.file_name = None
+            job.file_size = None
+            job.checksum_sha256 = None
+            job.report_path = None
+            job.progress = 100
+            job.error_message = "导出已过期"
+        await session.commit()

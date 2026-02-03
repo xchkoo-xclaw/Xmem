@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from urllib.parse import urlsplit
 
 from .db import engine, Base
-from .routers import auth, notes, ledger, todos
+from .routers import auth, notes, ledger, todos, exports
 from .auth import get_current_user
 from .config import settings
 
@@ -110,6 +110,7 @@ app.include_router(auth.router)
 app.include_router(notes.public_router)
 
 # 其他notes路由需要认证
+app.include_router(exports.router, dependencies=[Depends(get_current_user)])
 app.include_router(notes.router, dependencies=[Depends(get_current_user)])
 
 app.include_router(ledger.router, dependencies=[Depends(get_current_user)])

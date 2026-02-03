@@ -39,7 +39,7 @@
             <div v-if="isShareView && shareOwnerName">分享人：{{ shareOwnerName }}</div>
           </div>
           <div class="flex items-center gap-2">
-            <div v-if="!isShareView" class="flex items-center gap-2">
+            <div v-if="!isShareView" class="flex items-center gap-2 max-[640px]:hidden">
               <button
                 @click="handleShareToggle(!shareEnabled)"
                 class="btn ghost text-sm"
@@ -70,7 +70,7 @@
                 <span class="max-[420px]:hidden">复制链接</span>
               </button>
             </div>
-            <div v-if="!isShareView && canEdit" class="flex items-center gap-2">
+            <div v-if="!isShareView && canEdit" class="flex items-center gap-2 max-[640px]:hidden">
               <div class="h-4 w-px bg-border/70"></div>
               <button
                 @click="toggleAiPanel"
@@ -95,10 +95,52 @@
               </svg>
               <span class="max-[420px]:hidden">复制</span>
             </button>
+            <div v-if="!isShareView && canEdit" class="relative hidden max-[640px]:inline-flex">
+              <button
+                @click="toggleMobileActions"
+                class="btn ghost text-sm"
+                title="更多操作"
+                aria-label="更多操作"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6h.01M12 12h.01M12 18h.01" />
+                </svg>
+              </button>
+              <div
+                v-if="mobileActionsOpen"
+                class="absolute right-0 top-11 z-10 w-44 rounded-xl border border-border bg-surface shadow-float p-1"
+              >
+                <button
+                  @click="handleMobileShareToggle(!shareEnabled)"
+                  class="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-surface2"
+                >
+                  {{ shareEnabled ? "设为私密" : "设为公开" }}
+                </button>
+                <button
+                  v-if="shareEnabled && shareLink"
+                  @click="handleMobileCopyShareLink"
+                  class="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-surface2"
+                >
+                  复制分享链接
+                </button>
+                <button
+                  @click="handleMobileToggleAi"
+                  class="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-surface2"
+                >
+                  AI 功能
+                </button>
+                <button
+                  @click="handleMobileDelete"
+                  class="w-full text-left px-3 py-2 rounded-lg text-sm text-red-500 hover:text-red-600 hover:bg-surface2"
+                >
+                  删除笔记
+                </button>
+              </div>
+            </div>
             <button
               v-if="canEdit"
               @click="handleDelete"
-              class="btn ghost text-sm text-red-500 hover:text-red-700"
+              class="btn ghost text-sm text-red-500 hover:text-red-600 border-red-200/70 hover:border-red-300/80 max-[640px]:hidden"
               title="删除笔记"
               aria-label="删除"
             >
@@ -250,6 +292,9 @@ const activeNoteId = computed(() => displayedNote.value?.id ?? null);
 const shareEnabled = ref(false);
 const shareLinkOverride = ref("");
 const aiPanelOpen = ref(false);
+const mobileActionsOpen = ref(false);
+const shareToggleLock = ref(false);
+const shareToggleTimer = ref<number | null>(null);
 const aiSummary = ref("");
 const aiSummaryLoading = ref(false);
 const aiTodosLoading = ref(false);
@@ -370,8 +415,10 @@ const handleEdit = () => {
 /**
  * 切换分享状态并同步链接。
  */
-const handleShareToggle = async (nextValue: boolean) => {
+const performShareToggle = async (nextValue: boolean) => {
   if (!activeNoteId.value) return;
+  if (shareToggleLock.value) return;
+  shareToggleLock.value = true;
   shareEnabled.value = nextValue;
   try {
     const shareInfo = await data.toggleNoteShareStatus(Number(activeNoteId.value), nextValue);
@@ -389,7 +436,20 @@ const handleShareToggle = async (nextValue: boolean) => {
   } catch (error: any) {
     shareEnabled.value = !nextValue;
     toast.error(error.response?.data?.detail || "切换分享状态失败");
+  } finally {
+    shareToggleLock.value = false;
   }
+};
+
+/** 切换分享状态并防抖处理 */
+const handleShareToggle = (nextValue: boolean) => {
+  if (shareToggleTimer.value !== null) {
+    window.clearTimeout(shareToggleTimer.value);
+  }
+  shareToggleTimer.value = window.setTimeout(() => {
+    performShareToggle(nextValue);
+    shareToggleTimer.value = null;
+  }, 350);
 };
 
 const handleCopyShareLink = async () => {
@@ -400,6 +460,40 @@ const handleCopyShareLink = async () => {
   } catch {
     toast.error("复制分享链接失败");
   }
+};
+
+/** 切换移动端更多操作菜单 */
+const toggleMobileActions = () => {
+  mobileActionsOpen.value = !mobileActionsOpen.value;
+};
+
+/** 关闭移动端更多操作菜单 */
+const closeMobileActions = () => {
+  mobileActionsOpen.value = false;
+};
+
+/** 移动端切换分享状态 */
+const handleMobileShareToggle = async (nextValue: boolean) => {
+  closeMobileActions();
+  await handleShareToggle(nextValue);
+};
+
+/** 移动端复制分享链接 */
+const handleMobileCopyShareLink = async () => {
+  closeMobileActions();
+  await handleCopyShareLink();
+};
+
+/** 移动端切换 AI 面板 */
+const handleMobileToggleAi = () => {
+  closeMobileActions();
+  toggleAiPanel();
+};
+
+/** 移动端删除笔记 */
+const handleMobileDelete = () => {
+  closeMobileActions();
+  handleDelete();
 };
 
 const toggleAiPanel = () => {

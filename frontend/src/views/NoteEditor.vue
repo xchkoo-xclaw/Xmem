@@ -248,4 +248,18 @@ const handleSave = async () => {
 .btn.ghost {
   @apply bg-surface text-text border border-border hover:border-border/70 disabled:opacity-50 disabled:cursor-not-allowed;
 }
+
+@media (max-width: 640px) {
+  :deep(.md-editor-content) {
+    flex-direction: column;
+  }
+  :deep(.md-editor-input-wrapper),
+  :deep(.md-editor-preview-wrapper) {
+    width: 100%;
+  }
+  :deep(.md-editor-preview-wrapper) {
+    border-left: 0;
+    border-top: 1px solid rgb(var(--c-border));
+  }
+}
 </style>

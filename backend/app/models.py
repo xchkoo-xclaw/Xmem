@@ -104,6 +104,27 @@ class Todo(Base):
     )
 
 
+class ExportJob(Base):
+    __tablename__ = "export_jobs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    export_type = Column(String(16), nullable=False)  # csv, md7z
+    status = Column(String(16), default="pending", nullable=False)  # pending, processing, completed, failed
+    note_ids = Column(JSON, nullable=True)
+    file_path = Column(String(512), nullable=True)
+    file_name = Column(String(255), nullable=True)
+    file_size = Column(Integer, nullable=True)
+    checksum_sha256 = Column(String(64), nullable=True)
+    report_path = Column(String(512), nullable=True)
+    progress = Column(Integer, default=0, nullable=False)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+    owner = relationship("User", backref="export_jobs")
+
+
 class LoginAuditLog(Base):
     __tablename__ = "login_audit_logs"
 
