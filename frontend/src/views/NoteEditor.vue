@@ -249,6 +249,19 @@ const handleSave = async () => {
   @apply bg-surface text-text border border-border hover:border-border/70 disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
+:deep(.md-editor),
+:deep(.md-editor-toolbar),
+:deep(.md-editor-input),
+:deep(.md-editor-input-wrapper),
+:deep(.md-editor-preview),
+:deep(.md-editor-preview-wrapper),
+:deep(.md-editor-v-5-preview),
+:deep(.md-editor-v-5),
+:deep(.md-editor-v-5-content) {
+  background-color: rgb(var(--c-surface));
+  color: rgb(var(--c-text));
+}
+
 @media (max-width: 640px) {
   :deep(.md-editor-content) {
     flex-direction: column;

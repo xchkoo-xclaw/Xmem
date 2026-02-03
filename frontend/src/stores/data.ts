@@ -184,6 +184,7 @@ export const useDataStore = defineStore("data", {
     async generateLedgerMonthlySummary(month: string): Promise<LedgerMonthlySummary> {
       const { data } = await api.post("/ledger/statistics/ai-summary", undefined, {
         params: { month },
+        timeout: 30000,
       });
       return data;
     },

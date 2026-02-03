@@ -92,12 +92,24 @@
               </button>
             </div>
           </div>
+          <div v-if="summaryError" class="text-xs text-red-500 mb-3">
+            {{ summaryError }}
+          </div>
           <div v-if="summaryGenerating" class="space-y-2">
             <div class="ai-skeleton-line w-3/4"></div>
             <div class="ai-skeleton-line w-2/3"></div>
             <div class="ai-skeleton-line w-1/2"></div>
           </div>
-          <div v-else-if="summaryStats?.ai_summary" class="prose prose-sm max-w-none">
+          <div
+            v-else-if="summaryStats?.ai_summary"
+            :class="[
+              'prose',
+              'prose-sm',
+              'max-w-none',
+              'summary-preview',
+              theme.resolvedTheme === 'dark' ? 'prose-invert' : ''
+            ]"
+          >
             <MdPreview v-secure-display :modelValue="summaryStats.ai_summary" :theme="theme.resolvedTheme" />
           </div>
           <div v-else class="text-sm text-muted">暂无总结</div>
@@ -277,6 +289,7 @@ const budgetInput = ref<number | null>(null);
 const budgetAmount = ref<number | null>(null);
 const isSavingBudget = ref(false);
 const summaryGenerating = ref(false);
+const summaryError = ref("");
 const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
 const calendarMonth = ref<string>("");
 const summaryMonth = ref<string>("");
@@ -284,6 +297,13 @@ const monthlyTrendEndMonth = ref<string>("");
 const yearlySummaryYear = ref<number>(new Date().getFullYear());
 const yearlyCompareYear = ref<number>(new Date().getFullYear());
 const latestTrendEndMonth = ref<string>("");
+
+/**
+ * 图表坐标轴与图例文字颜色（适配主题）。
+ */
+const chartAxisLabelColor = computed(() =>
+  theme.resolvedTheme === "dark" ? "rgb(236, 237, 241)" : "rgb(107, 114, 128)"
+);
 
 const hasStatistics = computed(() => {
   return Boolean(
@@ -325,7 +345,7 @@ const yearlyChartOption = computed(() => {
       data: months,
       axisLabel: {
         fontSize: 11,
-        color: 'rgb(var(--c-text-muted))',
+        color: chartAxisLabelColor.value,
         rotate: 45
       }
     },
@@ -334,7 +354,7 @@ const yearlyChartOption = computed(() => {
       axisLabel: {
         formatter: (value: number) => `¥${(value / 1000).toFixed(0)}k`,
         fontSize: 12,
-        color: 'rgb(var(--c-text-muted))'
+        color: chartAxisLabelColor.value
       }
     },
     series: [
@@ -392,7 +412,7 @@ const monthlyTrendOption = computed(() => {
       data: months,
       axisLabel: {
         fontSize: 11,
-        color: "rgb(var(--c-text-muted))"
+        color: chartAxisLabelColor.value
       }
     },
     yAxis: {
@@ -400,7 +420,7 @@ const monthlyTrendOption = computed(() => {
       axisLabel: {
         formatter: (value: number) => `¥${(value / 1000).toFixed(0)}k`,
         fontSize: 12,
-        color: "rgb(var(--c-text-muted))"
+        color: chartAxisLabelColor.value
       }
     },
     series: [
@@ -453,7 +473,7 @@ const yearlyComparisonOption = computed(() => {
       data: years,
       axisLabel: {
         fontSize: 11,
-        color: "rgb(var(--c-text-muted))"
+        color: chartAxisLabelColor.value
       }
     },
     yAxis: {
@@ -461,7 +481,7 @@ const yearlyComparisonOption = computed(() => {
       axisLabel: {
         formatter: (value: number) => `¥${(value / 1000).toFixed(0)}k`,
         fontSize: 12,
-        color: "rgb(var(--c-text-muted))"
+        color: chartAxisLabelColor.value
       }
     },
     series: [
@@ -518,7 +538,7 @@ const categoryChartOption = computed(() => {
       top: 'middle',
       textStyle: {
         fontSize: 12,
-        color: 'rgb(var(--c-text-muted))'
+        color: chartAxisLabelColor.value
       }
     },
     series: [
@@ -885,6 +905,33 @@ const shiftSummaryMonth = async (offset: number, hash: string) => {
   await pushToCard(hash);
 };
 
+const resolveSummaryErrorMessage = (error: any) => {
+  const errorCode = error?.code;
+  const rawMessage = error?.message || "";
+  if (errorCode === "ECONNABORTED" || /timeout/i.test(rawMessage)) {
+    return "请求超时，请稍后重试";
+  }
+  const detail = error?.response?.data?.detail;
+  const responseData = error?.response?.data;
+  const status = error?.response?.status;
+  let message = "";
+  if (typeof detail === "string" && detail) {
+    message = detail;
+  } else if (detail !== undefined) {
+    message = JSON.stringify(detail);
+  } else if (typeof responseData === "string") {
+    message = responseData;
+  } else if (responseData) {
+    message = JSON.stringify(responseData);
+  } else {
+    message = error?.message || "";
+  }
+  if (status) {
+    return `生成失败(${status}): ${message || "未知错误"}`;
+  }
+  return message || "AI 总结生成失败";
+};
+
 /**
  * 手动生成当前月份的 AI 总结。
  */
@@ -892,20 +939,30 @@ const handleGenerateSummary = async () => {
   const targetMonth = resolveMonthValue(summaryMonth.value, summaryStats.value?.current_month);
   summaryMonth.value = targetMonth;
   summaryGenerating.value = true;
+  summaryError.value = "";
   try {
     const result = await data.generateLedgerMonthlySummary(targetMonth);
+    const summary = typeof result?.summary === "string" ? result.summary.trim() : "";
+    if (!summary) {
+      const message = "AI 返回空总结内容";
+      summaryError.value = message;
+      toast.error(message);
+      return;
+    }
     if (summaryStats.value) {
       summaryStats.value = {
         ...summaryStats.value,
         current_month: targetMonth,
-        ai_summary: result.summary,
+        ai_summary: summary,
       };
     } else {
       await loadSummaryStats(targetMonth);
     }
     toast.success("AI 总结已生成");
   } catch (error: any) {
-    toast.error(error.response?.data?.detail || "AI 总结生成失败");
+    const message = resolveSummaryErrorMessage(error);
+    summaryError.value = message;
+    toast.error(message);
   } finally {
     summaryGenerating.value = false;
   }
@@ -976,6 +1033,20 @@ onUnmounted(() => {
   border-color: rgb(255, 90, 180);
   box-shadow: 0 0 18px rgba(255, 90, 180, 0.45);
   animation: ai-rgb-pulse 2.4s ease-in-out infinite;
+}
+
+.summary-preview :deep(.md-editor-v-5-preview) {
+  background-color: rgb(var(--c-surface));
+  color: rgb(var(--c-text));
+}
+
+.summary-preview :deep(.md-editor-preview-wrapper),
+.summary-preview :deep(.md-editor-preview),
+.summary-preview :deep(.md-editor-preview .md-editor-v-5-preview),
+.summary-preview :deep(.md-editor-v-5),
+.summary-preview :deep(.md-editor-v-5-content) {
+  background-color: rgb(var(--c-surface));
+  color: rgb(var(--c-text));
 }
 
 @keyframes ai-rgb-pulse {
