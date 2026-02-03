@@ -247,6 +247,13 @@ class MonthlyStats(BaseModel):
     count: int
 
 
+class DailyStats(BaseModel):
+    """日度统计数据"""
+    date: str  # YYYY-MM-DD
+    amount: float
+    count: int
+
+
 class CategoryStats(BaseModel):
     """分类统计数据"""
     category: str
@@ -255,8 +262,20 @@ class CategoryStats(BaseModel):
     percentage: float
 
 
+class LedgerBudgetIn(BaseModel):
+    month: str
+    amount: float
+
+
+class LedgerBudgetOut(BaseModel):
+    month: str
+    amount: float
+
+
 class LedgerStatisticsResponse(BaseModel):
     """记账统计响应"""
+    current_month: str
+    daily_data: List[DailyStats]
     monthly_data: List[MonthlyStats]  # 近6个月
     yearly_data: List[MonthlyStats]  # 全年12个月
     category_stats: List[CategoryStats]  # 分类统计
@@ -264,3 +283,5 @@ class LedgerStatisticsResponse(BaseModel):
     last_month_total: float
     month_diff: float
     month_diff_percent: float
+    ai_summary: Optional[str] = None
+    budget: Optional[LedgerBudgetOut] = None

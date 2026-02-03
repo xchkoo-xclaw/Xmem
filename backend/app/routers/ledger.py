@@ -4,6 +4,7 @@ from typing import Optional
 import json
 import logging
 import datetime as dt
+import calendar
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from celery import chain
@@ -25,6 +26,28 @@ router = APIRouter(prefix="/ledger", tags=["ledger"])
 UPLOAD_DIR = Path("uploads")
 IMAGE_DIR = UPLOAD_DIR / "images"
 IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _parse_month(value: str) -> dt.datetime:
+    """解析 YYYY-MM 字符串并返回该月第一天。"""
+    try:
+        return dt.datetime.strptime(value, "%Y-%m")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="月份格式必须为 YYYY-MM") from exc
+
+
+def _build_ledger_summary_text(entries: list[models.LedgerEntry]) -> str:
+    """构建用于 AI 总结的记账文本。"""
+    lines: list[str] = []
+    for entry in entries:
+        entry_date = entry.event_time or entry.created_at
+        date_label = entry_date.strftime("%Y-%m-%d")
+        amount = entry.amount or 0
+        currency = entry.currency or "CNY"
+        category = entry.category or "未分类"
+        merchant = entry.merchant or "未知商家"
+        lines.append(f"{date_label} | {amount} {currency} | {category} | {merchant}")
+    return "\n".join(lines)
 
 #用于获取当前用户的所有记账条目（支持分页）
 @router.get("", response_model=schemas.LedgerListResponse)
@@ -267,6 +290,60 @@ async def summary(
     return {"total_amount": total, "recent": recent.scalars().all()}
 
 
+@router.get("/budget", response_model=Optional[schemas.LedgerBudgetOut])
+async def get_ledger_budget(
+    month: Optional[str] = Query(None, description="预算月份，格式 YYYY-MM"),
+    session: AsyncSession = Depends(get_session),
+    current_user: models.User = Depends(get_current_user),
+):
+    """获取当前用户指定月份的预算。"""
+    target_month = month or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m")
+    _parse_month(target_month)
+    result = await session.execute(
+        select(models.LedgerBudget).where(
+            models.LedgerBudget.user_id == current_user.id,
+            models.LedgerBudget.month == target_month,
+        )
+    )
+    budget = result.scalar_one_or_none()
+    if not budget:
+        return None
+    return schemas.LedgerBudgetOut(month=budget.month, amount=budget.amount)
+
+
+@router.put("/budget", response_model=schemas.LedgerBudgetOut)
+async def upsert_ledger_budget(
+    payload: schemas.LedgerBudgetIn,
+    session: AsyncSession = Depends(get_session),
+    current_user: models.User = Depends(get_current_user),
+):
+    """创建或更新指定月份的预算。"""
+    target_month = payload.month
+    _parse_month(target_month)
+    if payload.amount < 0:
+        raise HTTPException(status_code=400, detail="预算金额不能为负数")
+    result = await session.execute(
+        select(models.LedgerBudget).where(
+            models.LedgerBudget.user_id == current_user.id,
+            models.LedgerBudget.month == target_month,
+        )
+    )
+    budget = result.scalar_one_or_none()
+    if budget:
+        budget.amount = payload.amount
+        budget.updated_at = models.utc_now()
+    else:
+        budget = models.LedgerBudget(
+            user_id=current_user.id,
+            month=target_month,
+            amount=payload.amount,
+        )
+        session.add(budget)
+    await session.commit()
+    await session.refresh(budget)
+    return schemas.LedgerBudgetOut(month=budget.month, amount=budget.amount)
+
+
 @router.get("/statistics", response_model=schemas.LedgerStatisticsResponse)
 async def get_ledger_statistics(
     session: AsyncSession = Depends(get_session),
@@ -295,6 +372,8 @@ async def get_ledger_statistics(
             logger.warning(f"获取 {currency} 汇率失败: {str(e)}，使用默认值")
             exchange_rates[currency] = await get_exchange_rate_to_cny(currency)  # 会使用默认值
     
+    current_month_str = f"{now.year}-{now.month:02d}"
+
     # 计算近6个月数据
     monthly_data: list[schemas.MonthlyStats] = []
     for i in range(5, -1, -1):  # 从5个月前到当前月
@@ -391,15 +470,69 @@ async def get_ledger_statistics(
     last_month_total = monthly_data[-2].amount if len(monthly_data) > 1 else 0.0
     month_diff = current_month_total - last_month_total
     month_diff_percent = (month_diff / last_month_total * 100) if last_month_total > 0 else 0.0
+
+    # 计算当前月日历数据
+    days_in_month = calendar.monthrange(now.year, now.month)[1]
+    daily_amounts: dict[int, float] = {day: 0.0 for day in range(1, days_in_month + 1)}
+    daily_counts: dict[int, int] = {day: 0 for day in range(1, days_in_month + 1)}
+    current_month_entries: list[models.LedgerEntry] = []
+    for entry in entries:
+        entry_date = entry.event_time or entry.created_at
+        if entry_date.year == now.year and entry_date.month == now.month:
+            current_month_entries.append(entry)
+            day = entry_date.day
+            currency = entry.currency or "CNY"
+            rate = exchange_rates.get(currency, 1.0)
+            if entry.amount:
+                daily_amounts[day] += convert_to_cny(entry.amount, currency, rate)
+            daily_counts[day] += 1
+
+    daily_data: list[schemas.DailyStats] = []
+    for day in range(1, days_in_month + 1):
+        date_str = f"{now.year}-{now.month:02d}-{day:02d}"
+        daily_data.append(
+            schemas.DailyStats(
+                date=date_str,
+                amount=daily_amounts[day],
+                count=daily_counts[day],
+            )
+        )
+
+    # 获取预算
+    budget_result = await session.execute(
+        select(models.LedgerBudget).where(
+            models.LedgerBudget.user_id == current_user.id,
+            models.LedgerBudget.month == current_month_str,
+        )
+    )
+    budget = budget_result.scalar_one_or_none()
+    budget_out = (
+        schemas.LedgerBudgetOut(month=budget.month, amount=budget.amount) if budget else None
+    )
+
+    # 生成 AI 月度总结
+    ai_summary: str | None = None
+    if current_month_entries:
+        try:
+            from ..services import ai as ai_service
+
+            summary_text = _build_ledger_summary_text(current_month_entries)
+            ai_summary = ai_service.generate_ledger_monthly_summary(summary_text)
+        except Exception as error:
+            logger.warning(f"生成记账月度总结失败: {error}")
     
     return schemas.LedgerStatisticsResponse(
+        current_month=current_month_str,
+        daily_data=daily_data,
         monthly_data=monthly_data,
         yearly_data=yearly_data,
         category_stats=category_stats,
         current_month_total=current_month_total,
         last_month_total=last_month_total,
         month_diff=month_diff,
-        month_diff_percent=month_diff_percent
+        month_diff_percent=month_diff_percent,
+        ai_summary=ai_summary,
+        budget=budget_out,
     )
 
 

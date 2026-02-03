@@ -91,6 +91,70 @@
             <!-- 已上传的文件列表 -->
           </div>
 
+          <div v-if="currentTab === 'ledger'" class="p-1">
+            <div class="flex items-center gap-3">
+              <button class="banner-nav" @click="handleBannerPrev">‹</button>
+              <div class="flex-1 overflow-hidden rounded-2xl">
+                <div class="flex transition-transform duration-500" :style="bannerTranslateStyle">
+                  <div class="w-full flex-shrink-0">
+                    <LedgerStatsCard @click="router.push('/ledger-statistics')" />
+                  </div>
+                  <div class="w-full flex-shrink-0">
+                    <div
+                      class="rounded-xl p-4 cursor-pointer transition-all duration-200 border border-border bg-surface shadow-card hover:shadow-float"
+                      @click="router.push('/ledger-statistics')"
+                    >
+                      <div class="flex items-center justify-between mb-3">
+                        <div>
+                          <h3 class="text-sm font-semibold text-text">月度预算</h3>
+                          <p class="text-xs text-muted mt-1">{{ bannerMonthLabel }}</p>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3-.895-3-2s1.343-2 3-2 3 .895 3 2-1.343 2-3 2zm0 0v8m0 0c-2.761 0-5 1.343-5 3h10c0-1.657-2.239-3-5-3z" />
+                        </svg>
+                      </div>
+                      <div v-if="ledgerStatistics" class="h-24 flex flex-col justify-center gap-2">
+                        <div v-if="bannerBudgetAmount !== null" class="space-y-1">
+                          <div class="text-lg font-semibold text-text">¥{{ bannerBudgetAmount.toLocaleString() }}</div>
+                          <div class="text-xs" :class="bannerBudgetRemaining >= 0 ? 'text-green-600' : 'text-red-600'">
+                            {{ bannerBudgetRemaining >= 0 ? "剩余" : "超出" }} ¥{{ Math.abs(bannerBudgetRemaining).toLocaleString() }}
+                          </div>
+                          <div class="text-xs text-muted">已用 ¥{{ ledgerStatistics.current_month_total.toLocaleString() }}</div>
+                          <div class="h-2 rounded-full bg-border/50 overflow-hidden">
+                            <div
+                              class="h-full transition-all duration-300"
+                              :class="bannerBudgetRemaining >= 0 ? 'bg-green-500' : 'bg-red-500'"
+                              :style="{ width: `${bannerBudgetProgress}%` }"
+                            ></div>
+                          </div>
+                        </div>
+                        <div v-else class="text-xs text-muted">未设置预算，请前往统计页面设置</div>
+                      </div>
+                      <div v-else class="h-24 flex items-center text-muted text-sm">加载中...</div>
+                      <div class="mt-3 flex items-center justify-between text-xs">
+                        <span class="text-muted">查看预算详情</span>
+                        <span class="text-blue-500 hover:text-blue-400">查看详情 →</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button class="banner-nav" @click="handleBannerNext">›</button>
+            </div>
+            <div class="mt-2 flex items-center justify-center gap-2">
+              <button
+                class="w-2 h-2 rounded-full"
+                :class="bannerIndex === 0 ? 'bg-accent' : 'bg-border'"
+                @click="setBannerIndex(0)"
+              ></button>
+              <button
+                class="w-2 h-2 rounded-full"
+                :class="bannerIndex === 1 ? 'bg-accent' : 'bg-border'"
+                @click="setBannerIndex(1)"
+              ></button>
+            </div>
+          </div>
+
           <!-- 笔记模式：只显示最新笔记 -->
           <div v-if="currentTab === 'note'">
             <div class="flex items-center justify-between mb-2">
@@ -248,12 +312,13 @@
 import { onMounted, onUnmounted, ref, computed, watch } from "vue";
 import TabSwitcher from "../components/TabSwitcher.vue";
 import LedgerCardContent from "../components/LedgerCardContent.vue";
+import LedgerStatsCard from "../components/LedgerStatsCard.vue";
 import NoteCardContent from "../components/NoteCardContent.vue";
 import TodoList from "../components/TodoList.vue";
 import TodoInput from "../components/TodoInput.vue";
 import { useUserStore } from "../stores/user";
 import { useDataStore } from "../stores/data";
-import type { LedgerEntry } from "../stores/data";
+import type { LedgerEntry, LedgerStatistics } from "../stores/data";
 import { useToastStore } from "../stores/toast";
 import { useConfirmStore } from "../stores/confirm";
 import { usePreferencesStore } from "../stores/preferences";
@@ -319,6 +384,10 @@ const isSubmitting = ref(false); // 提交状态，防止重复提交
 // 记账模式下待提交的图片
 const pendingLedgerImage = ref<File | null>(null);
 const pendingLedgerImagePreview = ref<string>("");
+const ledgerStatistics = ref<LedgerStatistics | null>(null);
+const bannerIndex = ref(0);
+const bannerTimer = ref<number | null>(null);
+const bannerCount = 2;
 
 // 轮询相关的状态
 const pollingIntervals = ref<Map<number, number>>(new Map()); // ledgerId -> intervalId
@@ -359,6 +428,32 @@ const maxNotesToShow = computed(() => {
   }
 });
 
+const bannerTranslateStyle = computed(() => ({
+  transform: `translateX(-${bannerIndex.value * 100}%)`,
+}));
+
+const bannerMonthLabel = computed(() => {
+  if (!ledgerStatistics.value) return "";
+  return formatMonthLabel(ledgerStatistics.value.current_month);
+});
+
+const bannerBudgetAmount = computed(() => {
+  return ledgerStatistics.value?.budget?.amount ?? null;
+});
+
+const bannerBudgetRemaining = computed(() => {
+  if (!ledgerStatistics.value || bannerBudgetAmount.value === null) return 0;
+  return bannerBudgetAmount.value - ledgerStatistics.value.current_month_total;
+});
+
+const bannerBudgetProgress = computed(() => {
+  if (!ledgerStatistics.value || bannerBudgetAmount.value === null || bannerBudgetAmount.value === 0) {
+    return 0;
+  }
+  const progress = (ledgerStatistics.value.current_month_total / bannerBudgetAmount.value) * 100;
+  return Math.min(100, Math.max(0, progress));
+});
+
 // 显示的笔记列表
 const displayedNotes = computed(() => {
   return data.notes.slice(0, maxNotesToShow.value);
@@ -374,11 +469,77 @@ const handleResize = () => {
   windowWidth.value = window.innerWidth;
 };
 
+/**
+ * 格式化月份显示文案。
+ */
+const formatMonthLabel = (month: string) => {
+  const [year, monthValue] = month.split("-");
+  return `${year}年${parseInt(monthValue)}月`;
+};
+
+/**
+ * 加载记账统计数据用于 Banner 展示。
+ */
+const loadLedgerStatistics = async () => {
+  try {
+    ledgerStatistics.value = await data.fetchLedgerStatistics();
+  } catch (error: any) {
+    console.error("获取记账统计失败:", error);
+  }
+};
+
+/**
+ * 设置 Banner 当前索引。
+ */
+const setBannerIndex = (index: number) => {
+  bannerIndex.value = index;
+};
+
+/**
+ * 切换到上一张 Banner。
+ */
+const handleBannerPrev = () => {
+  bannerIndex.value = (bannerIndex.value - 1 + bannerCount) % bannerCount;
+  startBannerRotation();
+};
+
+/**
+ * 切换到下一张 Banner。
+ */
+const handleBannerNext = () => {
+  bannerIndex.value = (bannerIndex.value + 1) % bannerCount;
+  startBannerRotation();
+};
+
+/**
+ * 启动 Banner 自动轮播。
+ */
+const startBannerRotation = () => {
+  stopBannerRotation();
+  bannerTimer.value = window.setInterval(() => {
+    bannerIndex.value = (bannerIndex.value + 1) % bannerCount;
+  }, 5000);
+};
+
+/**
+ * 停止 Banner 自动轮播。
+ */
+const stopBannerRotation = () => {
+  if (bannerTimer.value) {
+    clearInterval(bannerTimer.value);
+    bannerTimer.value = null;
+  }
+};
+
 // 监听标签页切换，切换到笔记模式时清空待提交的图片，并保存到localStorage
 watch(currentTab, (newTab) => {
   // 切换到笔记模式时清空待提交的图片
   if (newTab === "note") {
     clearPendingImage();
+    stopBannerRotation();
+  } else {
+    loadLedgerStatistics();
+    startBannerRotation();
   }
 });
 
@@ -398,6 +559,10 @@ onMounted(async () => {
         startPolling(ledger.id);
   }
 });
+    if (currentTab.value === "ledger") {
+      await loadLedgerStatistics();
+      startBannerRotation();
+    }
     // 加载快速输入内容
     loadInputTextFromStorage();
   }
@@ -412,6 +577,7 @@ onMounted(async () => {
 onUnmounted(() => {
   // 清理所有轮询
   stopAllPolling();
+  stopBannerRotation();
   
   if (typeof window !== "undefined") {
     window.removeEventListener("resize", handleResize);
@@ -888,6 +1054,9 @@ const getGreeting = () => {
 }
 .section-title {
   @apply text-sm font-semibold text-muted mb-2;
+}
+.banner-nav {
+  @apply w-8 h-8 rounded-full flex items-center justify-center text-lg text-text bg-white/40 hover:bg-white/60 border border-border/50 backdrop-blur-sm transition shrink-0;
 }
 
 

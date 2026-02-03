@@ -74,6 +74,8 @@ export interface Todo {
 }
 
 export interface LedgerStatistics {
+  current_month: string;
+  daily_data: Array<{ date: string; amount: number; count: number }>;
   monthly_data: Array<{ month: string; amount: number; count: number }>;
   yearly_data: Array<{ month: string; amount: number; count: number }>;
   category_stats: Array<{ category: string; amount: number; count: number; percentage: number }>;
@@ -81,6 +83,8 @@ export interface LedgerStatistics {
   last_month_total: number;
   month_diff: number;
   month_diff_percent: number;
+  ai_summary?: string | null;
+  budget?: { month: string; amount: number } | null;
 }
 
 export const useDataStore = defineStore("data", {
@@ -164,6 +168,21 @@ export const useDataStore = defineStore("data", {
     },
     async fetchLedgerStatistics() {
       const { data } = await api.get("/ledger/statistics");
+      return data;
+    },
+    /**
+     * 获取指定月份的预算数据。
+     */
+    async fetchLedgerBudget(month?: string) {
+      const params = month ? { month } : {};
+      const { data } = await api.get("/ledger/budget", { params });
+      return data;
+    },
+    /**
+     * 创建或更新指定月份的预算。
+     */
+    async upsertLedgerBudget(month: string, amount: number) {
+      const { data } = await api.put("/ledger/budget", { month, amount });
       return data;
     },
     async fetchTodos(completed?: boolean) {
