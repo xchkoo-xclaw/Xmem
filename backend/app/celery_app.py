@@ -30,8 +30,6 @@ celery_app.conf.update(
 
 celery_app.autodiscover_tasks(["app"])
 
-from .tasks import ledger_tasks, test_tasks, ocr_tasks, file_tasks
-
 celery_app.conf.beat_schedule = {
     "cleanup-orphan-files-every-hour": {
         "task": "app.tasks.file_tasks.cleanup_orphan_files",
