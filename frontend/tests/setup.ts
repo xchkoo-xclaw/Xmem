@@ -1,6 +1,6 @@
 import { afterEach, vi } from "vitest";
 
-if (!("matchMedia" in window)) {
+if (typeof window.matchMedia !== "function") {
   Object.defineProperty(window, "matchMedia", {
     value: (query: string) => ({
       matches: false,
