@@ -9,19 +9,30 @@
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
-          返回
+          <span class="max-[450px]:hidden">返回</span>
         </button>
         <div class="text-xl font-bold">笔记库</div>
       </div>
-      <button
-        @click="router.push('/editor')"
-        class="btn primary flex items-center gap-2"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        添加新笔记
-      </button>
+      <div class="flex items-center gap-3">
+        <button
+          @click="router.push('/notes/export')"
+          class="btn ghost flex items-center gap-2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v10m0 0l3-3m-3 3l-3-3m-6 7h12" />
+          </svg>
+          <span class="max-[450px]:hidden">导出</span>
+        </button>
+        <button
+          @click="router.push('/editor')"
+          class="btn primary flex items-center gap-2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span class="max-[450px]:hidden">添加新笔记</span>
+        </button>
+      </div>
     </header>
 
     <main class="w-full max-w-4xl mx-auto px-4 pb-20">

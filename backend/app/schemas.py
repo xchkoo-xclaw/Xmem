@@ -105,6 +105,40 @@ class NoteAiTodosOut(BaseModel):
     todos: list["TodoOut"]
 
 
+class NoteExportEstimateIn(BaseModel):
+    export_type: str
+    note_ids: Optional[list[int]] = None
+    include_all: bool = False
+
+
+class NoteExportEstimateOut(BaseModel):
+    estimated_size: int
+
+
+class NoteExportCreateIn(BaseModel):
+    export_type: str
+    note_ids: Optional[list[int]] = None
+    include_all: bool = False
+
+
+class NoteExportJobOut(BaseModel):
+    id: int
+    export_type: str
+    status: str
+    note_ids: Optional[list[int]] = None
+    file_name: Optional[str] = None
+    file_size: Optional[int] = None
+    checksum_sha256: Optional[str] = None
+    progress: int = 0
+    error_message: Optional[str] = None
+    created_at: dt.datetime
+    updated_at: Optional[dt.datetime] = None
+
+    class Config:
+        from_attributes = True
+        json_encoders = {dt.datetime: _encode_datetime_utc}
+
+
 class SharedUserOut(BaseModel):
     id: int
     email: EmailStr

@@ -32,4 +32,8 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.file_tasks.cleanup_orphan_files",
         "schedule": crontab(minute=0),  # 每小时执行一次
     },
+    "cleanup-expired-exports-daily": {
+        "task": "app.tasks.file_tasks.cleanup_expired_exports",
+        "schedule": crontab(hour=3, minute=30),  # 每天执行一次
+    },
 }

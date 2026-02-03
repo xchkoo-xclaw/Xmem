@@ -6,6 +6,7 @@ import TodosView from '../views/TodosView.vue';
 import LedgerStatisticsView from '../views/LedgerStatisticsView.vue';
 import NoteEditor from '../views/NoteEditor.vue';
 import NoteView from '../views/NoteView.vue';
+import NoteExportView from '../views/NoteExportView.vue';
 import LedgerView from '../views/LedgerView.vue';
 import NotFound from '../views/NotFound.vue';
 import ServerError from '../views/ServerError.vue';
@@ -44,6 +45,11 @@ const router = createRouter({
       path: '/notes',
       name: 'notes',
       component: NotesView
+    },
+    {
+      path: '/notes/export',
+      name: 'note-export',
+      component: NoteExportView
     },
     {
       path: '/ledgers',
