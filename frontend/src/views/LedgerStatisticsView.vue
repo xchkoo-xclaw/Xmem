@@ -129,10 +129,10 @@
                 v-model.number="budgetInput"
                 type="number"
                 min="0"
-                class="input flex-1"
+                class="budget-input flex-1 min-w-0"
                 placeholder="输入本月预算金额"
               />
-              <button class="btn primary md:w-32" @click="saveBudget" :disabled="isSavingBudget">
+              <button class="budget-save-btn w-full md:w-32 md:flex-none" @click="saveBudget" :disabled="isSavingBudget">
                 {{ isSavingBudget ? "保存中..." : "保存预算" }}
               </button>
             </div>
@@ -1023,6 +1023,14 @@ onUnmounted(() => {
 }
 .btn.ghost {
   @apply bg-surface text-text border border-border hover:border-border/70;
+}
+
+.budget-input {
+  @apply w-full rounded-xl border border-border bg-surface px-4 py-3 text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 transition-shadow shadow-sm;
+}
+
+.budget-save-btn {
+  @apply rounded-xl border border-border bg-surface text-text font-semibold px-4 py-3 transition-all duration-150 hover:border-border/70 hover:bg-surface2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
 .ai-skeleton-line {

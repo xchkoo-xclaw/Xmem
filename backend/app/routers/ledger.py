@@ -400,7 +400,23 @@ async def generate_ledger_ai_summary(
         raise HTTPException(status_code=400, detail="该月份暂无可用记账数据")
 
     summary_text = _build_ledger_summary_text(target_entries)
-    summary = ai_service.generate_ledger_monthly_summary(summary_text)
+    logger.info(
+        "生成月度总结: user_id=%s, month=%s, entries=%s, text_length=%s",
+        current_user.id,
+        target_month,
+        len(target_entries),
+        len(summary_text),
+    )
+    try:
+        summary = ai_service.generate_ledger_monthly_summary(summary_text)
+        if not summary or not summary.strip():
+            raise HTTPException(status_code=400, detail="AI 返回空总结内容")
+    except ValueError as error:
+        logger.exception("生成月度总结失败: user_id=%s, month=%s", current_user.id, target_month)
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:
+        logger.exception("生成月度总结失败: user_id=%s, month=%s", current_user.id, target_month)
+        raise HTTPException(status_code=500, detail=f"AI 总结失败: {str(error)}") from error
     last_entry_at = max(entry.updated_at or entry.created_at for entry in target_entries)
 
     summary_record_result = await session.execute(
