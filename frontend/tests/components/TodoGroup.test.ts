@@ -1,5 +1,6 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
+import { createPinia, setActivePinia } from "pinia";
 import type { Todo } from "../../src/stores/data";
 
 /**
@@ -29,6 +30,8 @@ const getTextInputs = (wrapper: any) => {
 
 describe("TodoGroup", () => {
   it("组标题：勾选、置顶、删除、添加子待办会发出事件", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
     const TodoGroup = (await import("../../src/components/TodoGroup.vue")).default;
     const wrapper = mount(TodoGroup, {
       props: {
@@ -38,6 +41,7 @@ describe("TodoGroup", () => {
           group_items: [createTodo({ id: 50, title: "i", group_id: 5, created_at: "2026-01-10T00:00:00Z" })],
         }),
       },
+      global: { plugins: [pinia] },
     });
 
     await wrapper.get('input[type="checkbox"]').trigger("change");
@@ -60,8 +64,10 @@ describe("TodoGroup", () => {
   });
 
   it("编辑组标题：blur/enter 会在内容变化时发出 update-title，esc 会回滚", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
     const TodoGroup = (await import("../../src/components/TodoGroup.vue")).default;
-    const wrapper = mount(TodoGroup, { props: { todo: createTodo({ id: 6, title: "old" }) } });
+    const wrapper = mount(TodoGroup, { props: { todo: createTodo({ id: 6, title: "old" }) }, global: { plugins: [pinia] } });
 
     const titleInput = getTextInputs(wrapper).at(0);
     expect(titleInput).toBeTruthy();
@@ -80,6 +86,8 @@ describe("TodoGroup", () => {
   });
 
   it("组内待办：勾选、删除、编辑会发出对应事件；回车会保存并创建新待办", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
     const TodoGroup = (await import("../../src/components/TodoGroup.vue")).default;
     const wrapper = mount(TodoGroup, {
       props: {
@@ -90,6 +98,7 @@ describe("TodoGroup", () => {
           ],
         }),
       },
+      global: { plugins: [pinia] },
     });
 
     await wrapper.findAll('input[type="checkbox"]').at(1)!.trigger("change");

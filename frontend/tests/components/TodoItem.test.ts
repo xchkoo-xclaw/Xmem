@@ -1,5 +1,6 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
+import { createPinia, setActivePinia } from "pinia";
 import type { Todo } from "../../src/stores/data";
 
 /**
@@ -32,9 +33,12 @@ const getTitleInput = (wrapper: any) => {
 
 describe("TodoItem", () => {
   it("勾选、置顶、删除会发出对应事件", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
     const TodoItem = (await import("../../src/components/TodoItem.vue")).default;
     const wrapper = mount(TodoItem, {
       props: { todo: createTodo({ id: 7, title: "hello" }) },
+      global: { plugins: [pinia] },
     });
 
     await wrapper.get('input[type="checkbox"]').trigger("change");
@@ -52,9 +56,12 @@ describe("TodoItem", () => {
   });
 
   it("编辑标题：blur/enter 会在内容变化时发出 update-title，esc 会回滚", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
     const TodoItem = (await import("../../src/components/TodoItem.vue")).default;
     const wrapper = mount(TodoItem, {
       props: { todo: createTodo({ id: 2, title: "old" }) },
+      global: { plugins: [pinia] },
     });
 
     const input = getTitleInput(wrapper);
@@ -72,9 +79,12 @@ describe("TodoItem", () => {
   });
 
   it("已完成待办不允许置顶与编辑，不会发出 update-title", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
     const TodoItem = (await import("../../src/components/TodoItem.vue")).default;
     const wrapper = mount(TodoItem, {
       props: { todo: createTodo({ id: 3, title: "done", completed: true }) },
+      global: { plugins: [pinia] },
     });
 
     expect(wrapper.find('button[title="置顶"]').exists()).toBe(false);
