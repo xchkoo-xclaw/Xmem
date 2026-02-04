@@ -1,4 +1,5 @@
 import json
+import re
 from openai import OpenAI
 
 from ..config import settings
@@ -40,13 +41,99 @@ def generate_note_summary(note_text: str) -> str:
     return response.choices[0].message.content.strip()
 
 
-def generate_note_todos(note_text: str) -> list[str]:
+def _normalize_todo_title(text: str) -> str:
+    """规范化待办标题用于匹配。"""
+    return re.sub(r"\s+", "", text or "").strip()
+
+
+def _strip_completed_markers(text: str) -> tuple[str, bool]:
+    """移除完成标记并返回完成状态。"""
+    cleaned = text.strip()
+    completed = False
+    patterns = [
+        r"^\s*\[x\]\s*",
+        r"^\s*\[X\]\s*",
+        r"^\s*✅\s*",
+        r"^\s*✔\s*",
+        r"^\s*√\s*",
+        r"^\s*×\s*",
+        r"^\s*✗\s*",
+        r"^\s*❌\s*",
+        r"^\s*☑\s*",
+        r"^\s*[（(【\[]\s*已完成\s*[】)\]]\s*",
+        r"\s*[（(【\[]\s*已完成\s*[】)\]]\s*$",
+    ]
+    for pattern in patterns:
+        if re.search(pattern, cleaned):
+            completed = True
+            cleaned = re.sub(pattern, "", cleaned).strip()
+    if not completed and "已完成" in cleaned and "未完成" not in cleaned:
+        completed = True
+        cleaned = cleaned.replace("已完成", "").strip()
+    cleaned = re.sub(r"^\s*[-*•+]\s*", "", cleaned)
+    cleaned = re.sub(r"^\s*\d+[.)、]\s*", "", cleaned)
+    return cleaned, completed
+
+
+def _extract_completed_titles(note_text: str) -> list[str]:
+    """从笔记文本中提取已完成条目标题。"""
+    titles: list[str] = []
+    for raw in note_text.splitlines():
+        text = raw.strip()
+        if not text:
+            continue
+        cleaned, completed = _strip_completed_markers(text)
+        if completed and cleaned:
+            titles.append(cleaned)
+    return titles
+
+
+def _extract_todo_item(item: object) -> tuple[str, bool | None]:
+    """从 AI 返回条目中提取标题与完成状态。"""
+    title = ""
+    completed: bool | None = None
+    if isinstance(item, str):
+        title = item.strip()
+    elif isinstance(item, dict):
+        for key in ("completed", "done", "finished", "is_completed", "is_done", "已完成"):
+            if key in item:
+                value = item.get(key)
+                if isinstance(value, bool):
+                    completed = value
+                elif isinstance(value, str):
+                    completed = value.strip().lower() in ("true", "yes", "y", "1", "是", "已完成")
+                elif isinstance(value, int):
+                    completed = bool(value)
+                break
+        for key in ("title", "task", "todo", "text", "content", "name", "事项", "任务", "待办"):
+            value = item.get(key)
+            if value:
+                title = str(value).strip()
+                break
+        if not title and len(item) == 1:
+            value = next(iter(item.values()))
+            title = str(value).strip()
+    elif isinstance(item, list) and item:
+        title = str(item[0]).strip()
+    if title:
+        title, completed_marker = _strip_completed_markers(title)
+        if completed is None:
+            completed = completed_marker
+        else:
+            completed = completed or completed_marker
+    return title, completed
+
+
+def generate_note_todos(note_text: str) -> list[dict[str, object]]:
+    """生成待办条目列表，包含完成状态。"""
     client = _get_client()
     prompt = (
-        "你是待办提取助手。请从用户笔记中提取可执行的待办事项，输出 JSON 数组，"
+        "你是待办提取助手。请从用户笔记中提取待办事项，输出 JSON 数组，"
         "数组元素为对象，字段仅包含 title。要求："
         "1) 不要输出解释；2) 标题简洁明确；3) 至多 10 条；"
-        "4) 如果没有待办，返回空数组。"
+        "4) 如果没有待办，返回空数组；"
+        "5) 含明确时间与动作的安排也视为待办（例如：2月3号出发去机场）；"
+        "6) 只要文本看起来像条目，就尽量转成待办，不要过度筛选。"
     )
     response = client.chat.completions.create(
         model="deepseek-chat",
@@ -57,20 +144,65 @@ def generate_note_todos(note_text: str) -> list[str]:
         stream=False,
     )
     content = _unwrap_json_content(response.choices[0].message.content)
-    data = json.loads(content)
-    if not isinstance(data, list):
-        raise ValueError("AI 返回的待办格式无效")
-    titles: list[str] = []
-    for item in data:
-        if isinstance(item, str):
-            title = item.strip()
-        elif isinstance(item, dict):
+    try:
+        data = json.loads(content)
+    except ValueError:
+        data = content
+    if isinstance(data, dict):
+        for key in ("todos", "items", "tasks", "list"):
+            if key in data:
+                data = data[key]
+                break
+    todo_items: list[dict[str, object]] = []
+    if isinstance(data, list):
+        for item in data:
+            title, completed = _extract_todo_item(item)
+            if title:
+                todo_items.append({"title": title, "completed": bool(completed)})
+    elif isinstance(data, str):
+        for raw in data.splitlines():
+            text = raw.strip().lstrip("-*").strip()
+            if text.startswith("[ ]"):
+                text = text[3:].strip()
+            if text:
+                title, completed = _strip_completed_markers(text)
+                if title:
+                    todo_items.append({"title": title, "completed": completed})
+    if not todo_items:
+        for raw in note_text.splitlines():
+            text = raw.strip().lstrip("-*").strip()
+            if text.startswith("[ ]"):
+                text = text[3:].strip()
+            if not text:
+                continue
+            title, completed = _strip_completed_markers(text)
+            if title:
+                todo_items.append({"title": title, "completed": completed})
+        if not todo_items:
+            text = note_text.strip().lstrip("-*").strip()
+            if text.startswith("[ ]"):
+                text = text[3:].strip()
+            if text:
+                title, completed = _strip_completed_markers(text)
+                if title:
+                    todo_items.append({"title": title, "completed": completed})
+    completed_titles = _extract_completed_titles(note_text)
+    completed_norms = [_normalize_todo_title(title) for title in completed_titles]
+    if completed_norms:
+        for item in todo_items:
+            if item.get("completed"):
+                continue
             title = str(item.get("title", "")).strip()
-        else:
-            title = ""
-        if title:
-            titles.append(title)
-    return titles[:10]
+            normalized_title = _normalize_todo_title(title)
+            for completed_title in completed_norms:
+                if not completed_title:
+                    continue
+                if normalized_title in completed_title or completed_title in normalized_title:
+                    item["completed"] = True
+                    break
+    if not isinstance(todo_items, list):
+        raise ValueError("AI 返回的待办格式无效")
+    return todo_items[:10]
 
 
 def generate_ledger_monthly_summary(ledger_text: str) -> str:

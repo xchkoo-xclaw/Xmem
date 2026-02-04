@@ -678,30 +678,40 @@ async def ai_note_todos(
     if not note.body_md or not note.body_md.strip():
         raise HTTPException(status_code=400, detail="笔记内容不能为空")
     try:
-        titles = generate_note_todos(note.body_md)
+        todo_items = generate_note_todos(note.body_md)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI 待办生成失败: {str(e)}") from e
-    if not titles:
+    if not todo_items:
+        return schemas.NoteAiTodosOut(todos=[])
+    normalized_items: list[dict[str, object]] = []
+    for item in todo_items:
+        title = str(item.get("title", "")).strip()
+        if not title:
+            continue
+        normalized_items.append({"title": title, "completed": bool(item.get("completed"))})
+    if not normalized_items:
         return schemas.NoteAiTodosOut(todos=[])
 
     group = models.Todo(
         user_id=current_user.id,
         title="AI 待办",
         is_ai_generated=True,
+        completed=all(item["completed"] for item in normalized_items),
     )
     session.add(group)
     await session.commit()
     await session.refresh(group)
 
     todos: list[models.Todo] = []
-    for title in titles:
+    for item in normalized_items:
         todo = models.Todo(
             user_id=current_user.id,
-            title=title,
+            title=item["title"],
             group_id=group.id,
             is_ai_generated=True,
+            completed=bool(item.get("completed")),
         )
         todos.append(todo)
     session.add_all(todos)

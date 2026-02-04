@@ -469,7 +469,13 @@ class TestNoteAi:
         app.dependency_overrides[get_session] = override_get_session
 
         try:
-            with patch("app.routers.notes.generate_note_todos", return_value=["待办A", "待办B"]):
+            with patch(
+                "app.routers.notes.generate_note_todos",
+                return_value=[
+                    {"title": "待办A", "completed": True},
+                    {"title": "待办B", "completed": False},
+                ],
+            ):
                 response = client.post(
                     "/notes/1/ai-todos",
                     headers={"Authorization": f"Bearer {mock_token}"}
@@ -480,6 +486,7 @@ class TestNoteAi:
             assert data["todos"][0]["title"] == "AI 待办"
             assert data["todos"][0]["is_ai_generated"] is True
             assert data["todos"][1]["group_id"] == data["todos"][0]["id"]
+            assert data["todos"][1]["completed"] is True
         finally:
             app.dependency_overrides.clear()
 
