@@ -74,6 +74,7 @@ describe("TodosView", () => {
     await router.isReady();
 
     const data = useDataStore();
+    vi.spyOn(data, "fetchTodos").mockResolvedValue(undefined as any);
     data.todos = [
       createTodo({ id: 1, is_pinned: false, created_at: "2026-01-09T00:00:00Z" }),
       createTodo({ id: 2, is_pinned: true, created_at: "2026-01-01T00:00:00Z" }),
@@ -100,6 +101,7 @@ describe("TodosView", () => {
     await router.isReady();
 
     const data = useDataStore();
+    vi.spyOn(data, "fetchTodos").mockResolvedValue(undefined as any);
     const toggleSpy = vi.spyOn(data, "toggleTodo").mockResolvedValue({} as any);
     const updateSpy = vi.spyOn(data, "updateTodo").mockResolvedValue({} as any);
     const removeSpy = vi.spyOn(data, "removeTodo").mockResolvedValue(undefined as any);
@@ -151,6 +153,8 @@ describe("TodosView", () => {
     await router.isReady();
 
     const backSpy = vi.spyOn(router, "back");
+    const data = useDataStore();
+    vi.spyOn(data, "fetchTodos").mockResolvedValue(undefined as any);
     const TodosView = (await import("../../src/views/TodosView.vue")).default;
     const wrapper = mount(TodosView, {
       global: { plugins: [pinia, router], stubs: { TodoInput: TodoInputStub, TodoList: TodoListStub } },

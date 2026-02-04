@@ -63,11 +63,16 @@ class NoteFileOut(BaseModel):
 
 class NoteCreate(NoteBase):
     files: Optional[list[NoteFileOut]] = None
+    ai_summary: Optional[str] = None
+    is_ledger_note: Optional[bool] = None
+    ledger_month: Optional[str] = None
 
 
 class NoteOut(NoteBase):
     id: int
     ai_summary: Optional[str] = None
+    is_ledger_note: bool = False
+    ledger_month: Optional[str] = None
     is_pinned: bool = False
     is_shared: bool = False
     share_uuid: Optional[str] = None
@@ -297,4 +302,5 @@ class LedgerStatisticsResponse(BaseModel):
     month_diff: float
     month_diff_percent: float
     ai_summary: Optional[str] = None
+    ledger_note_id: Optional[int] = None
     budget: Optional[LedgerBudgetOut] = None

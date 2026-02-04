@@ -675,7 +675,14 @@ const handleGenerateLedgerNote = async () => {
       return;
     }
     const markdown = buildLedgerNoteMarkdown(ledgerNoteRange.value, ledgerStatistics.value);
-    await data.addNoteWithMD(markdown);
+    const ledgerMonth = ledgerStatistics.value.current_month;
+    const aiSummary =
+      ledgerNoteRange.value === "month" ? ledgerStatistics.value.ai_summary?.trim() : undefined;
+    await data.addNoteWithMD(markdown, {
+      is_ledger_note: true,
+      ledger_month: ledgerMonth,
+      ai_summary: aiSummary || undefined,
+    });
     toast.success(`已生成${rangeLabel}记账笔记`);
   } catch (error: any) {
     console.error("生成记账笔记失败:", error);

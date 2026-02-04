@@ -178,7 +178,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5h6m-6 7h6m-6 7h6M5 6l1 1 2-2M5 13l1 1 2-2M5 20l1 1 2-2" />
                 </svg>
-                <span>{{ aiTodosLoading ? "生成中..." : "转待办" }}</span>
+                <span>{{ aiTodosLoading ? "生成中..." : "AI 转待办" }}</span>
               </span>
             </button>
           </div>
@@ -531,8 +531,12 @@ const handleAiTodos = async () => {
     if (result.todos.length === 0) {
       toast.info("未识别到待办");
     } else {
-      await data.fetchTodos(false);
-      toast.success("AI 待办已生成");
+      await data.fetchTodos();
+      const group = result.todos.find(t => !t.group_id) || result.todos[0];
+      const groupId = group?.id;
+      toast.success("AI 待办已生成", 5000, "查看", () => {
+        router.push({ name: "todos", query: groupId ? { todoId: String(groupId) } : {} });
+      });
     }
   } catch (error: any) {
     toast.error(error.response?.data?.detail || "AI 待办生成失败");

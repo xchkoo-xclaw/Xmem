@@ -78,8 +78,17 @@
             </svg>
           </div>
 
-          <!-- 消息 -->
           <div class="flex-1 text-sm font-medium">{{ toast.message }}</div>
+          
+          <button
+            v-if="toast.actionLabel"
+            @click="runAction(toast.id)"
+            class="flex-shrink-0 px-2 py-1 rounded text-xs font-semibold bg-white/20 hover:bg-white/30 transition-colors"
+            :aria-label="toast.actionLabel"
+            :title="toast.actionLabel"
+          >
+            {{ toast.actionLabel }}
+          </button>
 
           <!-- 关闭按钮 -->
           <button
@@ -118,6 +127,10 @@ const toasts = computed(() => toastStore.toasts);
 
 const remove = (id: string) => {
   toastStore.remove(id);
+};
+
+const runAction = (id: string) => {
+  toastStore.runAction(id);
 };
 
 const getToastClass = (type: ToastType): string => {
@@ -175,4 +188,3 @@ const getCloseButtonClass = (type: ToastType): string => {
   transition: transform 0.3s ease;
 }
 </style>
-

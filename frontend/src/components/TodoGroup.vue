@@ -51,6 +51,15 @@
           </svg>
         </button>
         <button
+          @click.stop="copyGroupTitle"
+          class="text-muted hover:text-text p-1.5 rounded-md hover:bg-surface2 active:scale-95"
+          title="复制组待办"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+        </button>
+        <button
           v-if="!todo.completed"
           @click.stop="$emit('pin', todo.id)"
           class="p-1.5 rounded-md active:scale-95 transition-colors"
@@ -113,6 +122,15 @@
           class="flex-1 text-sm bg-transparent border-none outline-none px-0 py-0 cursor-text focus:ring-0"
         />
         <button
+          @click.stop="copyGroupItem(item.id)"
+          class="text-muted hover:text-text p-1.5 rounded-md hover:bg-surface2 active:scale-95 transition-opacity flex-shrink-0 md:opacity-0 md:group-hover/item:opacity-100"
+          title="复制待办"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+        </button>
+        <button
           @click="$emit('delete-item', item.id)"
           class="text-red-500 hover:text-red-400 p-1.5 rounded-md hover:bg-red-500/10 active:scale-95 transition-opacity flex-shrink-0 md:opacity-0 md:group-hover/item:opacity-100"
           title="删除待办"
@@ -129,6 +147,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from "vue";
 import type { Todo } from "../stores/data";
+import { useToastStore } from "../stores/toast";
 
 const props = defineProps<{
   todo: Todo;
@@ -151,6 +170,7 @@ const titleInputRef = ref<HTMLInputElement | null>(null);
 const editingItems = ref<Record<number, string>>({});
 const itemInputRefs = ref<Record<number, HTMLInputElement | null>>({});
 const focusOnNextNewItem = ref(false);
+const toast = useToastStore();
 // 记录之前的待办 ID 列表，用于检测新添加的待办
 const previousItemIds = ref<Set<number>>(new Set());
 
@@ -186,6 +206,34 @@ const cancelEditTitle = () => {
 const handleAddItem = () => {
   focusOnNextNewItem.value = true;
   emit("add-item", props.todo.id);
+};
+
+const copyGroupTitle = async () => {
+  const title = (props.todo.title || "").trim();
+  const items = (props.todo.group_items || [])
+    .map(item => (item.title || "").trim())
+    .filter(Boolean);
+  const lines = title ? [title, ...items.map(item => `- ${item}`)] : items.map(item => `- ${item}`);
+  if (lines.length === 0) return;
+  const text = lines.join("\n");
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success("组待办已复制");
+  } catch {
+    toast.error("复制失败，请重试");
+  }
+};
+
+const copyGroupItem = async (itemId: number) => {
+  const item = props.todo.group_items?.find(target => target.id === itemId);
+  const text = (item?.title || "").trim();
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success("待办已复制");
+  } catch {
+    toast.error("复制失败，请重试");
+  }
 };
 
 // 设置输入框引用

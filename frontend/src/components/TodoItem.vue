@@ -36,6 +36,15 @@
     </div>
     <div class="flex items-center gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
       <button
+        @click.stop="copyItem"
+        class="text-muted hover:text-text p-1.5 rounded-md hover:bg-surface2 active:scale-95"
+        title="复制待办"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      </button>
+      <button
         v-if="!todo.completed"
         @click.stop="$emit('pin', todo.id)"
         class="p-1.5 rounded-md active:scale-95 transition-colors"
@@ -62,6 +71,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from "vue";
 import type { Todo } from "../stores/data";
+import { useToastStore } from "../stores/toast";
 
 const props = defineProps<{
   todo: Todo;
@@ -76,6 +86,7 @@ const emit = defineEmits<{
 
 const editTitle = ref(props.todo.title);
 const editInputRef = ref<HTMLInputElement | null>(null);
+const toast = useToastStore();
 
 // 监听 todo.title 的变化
 watch(() => props.todo.title, (newTitle) => {
@@ -99,6 +110,17 @@ const cancelEdit = () => {
 onMounted(() => {
   editTitle.value = props.todo.title;
 });
+
+const copyItem = async () => {
+  const text = (props.todo.title || "").trim();
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success("待办已复制");
+  } catch {
+    toast.error("复制失败，请重试");
+  }
+};
 </script>
 
 <style scoped>
