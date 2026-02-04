@@ -10,12 +10,75 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 concurrency:
   group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
+  build_push_images:
+    runs-on: ubuntu-latest
+    if: ${{ !startsWith(github.ref_name, 'electron/') }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute image targets
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#*/}"
+          prefix="${tag%%/*}"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          if [ "$prefix" = "backend" ]; then
+            echo "PUSH_BACKEND=true" >> "$GITHUB_ENV"
+            echo "PUSH_FRONTEND=false" >> "$GITHUB_ENV"
+          elif [ "$prefix" = "frontend" ]; then
+            echo "PUSH_BACKEND=false" >> "$GITHUB_ENV"
+            echo "PUSH_FRONTEND=true" >> "$GITHUB_ENV"
+          elif [ "$prefix" = "xmem" ]; then
+            echo "PUSH_BACKEND=true" >> "$GITHUB_ENV"
+            echo "PUSH_FRONTEND=true" >> "$GITHUB_ENV"
+            echo "PUSH_LATEST=true" >> "$GITHUB_ENV"
+          else
+            echo "PUSH_BACKEND=false" >> "$GITHUB_ENV"
+            echo "PUSH_FRONTEND=false" >> "$GITHUB_ENV"
+          fi
+          owner="${GITHUB_REPOSITORY_OWNER}"
+          backend_tags="ghcr.io/${owner}/xmem-backend:${version}"
+          frontend_tags="ghcr.io/${owner}/xmem-frontend:${version}"
+          if [ "$prefix" = "xmem" ]; then
+            backend_tags="${backend_tags},ghcr.io/${owner}/xmem-backend:latest"
+            frontend_tags="${frontend_tags},ghcr.io/${owner}/xmem-frontend:latest"
+          fi
+          echo "BACKEND_TAGS=$backend_tags" >> "$GITHUB_ENV"
+          echo "FRONTEND_TAGS=$frontend_tags" >> "$GITHUB_ENV"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend
+        if: ${{ env.PUSH_BACKEND == 'true' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ env.BACKEND_TAGS }}
+
+      - name: Build and push frontend
+        if: ${{ env.PUSH_FRONTEND == 'true' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ env.FRONTEND_TAGS }}
+          build-args: |
+            VITE_API_URL=/api
+
   github_release:
     runs-on: ubuntu-latest
     steps:

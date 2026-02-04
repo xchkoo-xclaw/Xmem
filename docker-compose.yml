@@ -1,7 +1,7 @@
 services:
   # PostgreSQL 数据库
   db:
-    build: ./database
+    image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -20,7 +20,7 @@ services:
 
   # Redis 服务器
   redis:
-    build: ./redis
+    image: redis:7-alpine
     restart: unless-stopped
     # 生产环境不暴露端口，只允许容器内访问
     # ports:
@@ -35,7 +35,7 @@ services:
 
   # 后端 API 服务
   backend:
-    build: ./backend
+    image: ghcr.io/${GHCR_OWNER:-xchkoo}/xmem-backend:${GHCR_TAG:-latest}
     restart: unless-stopped
     depends_on:
       db:
@@ -78,7 +78,7 @@ services:
 
   # Celery Worker
   celery:
-    build: ./backend
+    image: ghcr.io/${GHCR_OWNER:-xchkoo}/xmem-backend:${GHCR_TAG:-latest}
     restart: unless-stopped
     depends_on:
       - db
@@ -102,7 +102,7 @@ services:
 
   # Celery Beat (定时任务调度)
   celery-beat:
-    build: ./backend
+    image: ghcr.io/${GHCR_OWNER:-xchkoo}/xmem-backend:${GHCR_TAG:-latest}
     restart: unless-stopped
     depends_on:
       - db
@@ -117,10 +117,7 @@ services:
 
   # 前端 Nginx 服务
   frontend:
-    build:
-      context: ./frontend
-      args:
-        - VITE_API_URL=${VITE_API_URL:-/api}
+    image: ghcr.io/${GHCR_OWNER:-xchkoo}/xmem-frontend:${GHCR_TAG:-latest}
     restart: unless-stopped
     depends_on:
       - backend

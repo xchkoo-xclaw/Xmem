@@ -11,7 +11,7 @@ on:
         default: ""
       compose_build:
         type: boolean
-        default: true
+        default: false
   # push:
   #   branches: [main]
 
@@ -43,6 +43,8 @@ jobs:
               git checkout --force main
               git pull origin main
             fi
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.GHCR_USER }}" --password-stdin
+            docker compose pull
             if [ "$run_build" = "true" ]; then
               docker compose build --progress plain
             fi
