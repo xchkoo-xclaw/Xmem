@@ -45,11 +45,11 @@ jobs:
             echo "PUSH_FRONTEND=false" >> "$GITHUB_ENV"
           fi
           owner="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
-          backend_tags="ghcr.io/${owner}/xmem-backend:${version}"
-          frontend_tags="ghcr.io/${owner}/xmem-frontend:${version}"
+          backend_tags="ghcr.io/${owner}/xmem:${version}-backend"
+          frontend_tags="ghcr.io/${owner}/xmem:${version}-frontend"
           if [ "$prefix" = "xmem" ]; then
-            backend_tags="${backend_tags},ghcr.io/${owner}/xmem-backend:latest"
-            frontend_tags="${frontend_tags},ghcr.io/${owner}/xmem-frontend:latest"
+            backend_tags="${backend_tags},ghcr.io/${owner}/xmem:latest-backend"
+            frontend_tags="${frontend_tags},ghcr.io/${owner}/xmem:latest-frontend"
           fi
           echo "BACKEND_TAGS=$backend_tags" >> "$GITHUB_ENV"
           echo "FRONTEND_TAGS=$frontend_tags" >> "$GITHUB_ENV"
