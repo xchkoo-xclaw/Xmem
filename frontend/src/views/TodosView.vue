@@ -33,6 +33,7 @@
           @update-item-title="handleUpdateItemTitle"
           @toggle-item="handleToggleItem"
           :show-completed="true"
+          :highlight-todo-id="highlightTodoId"
         />
       </div>
     </main>
@@ -40,19 +41,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, ref, nextTick, watch } from "vue";
 import { useDataStore } from "../stores/data";
 import TodoList from "../components/TodoList.vue";
 import TodoInput from "../components/TodoInput.vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 
 const router = useRouter();
+const route = useRoute();
 
 const emit = defineEmits<{
   back: [];
 }>();
 
 const data = useDataStore();
+const highlightTodoId = ref<number | null>(null);
+const highlightTimer = ref<number | null>(null);
 
 // 排序后的待办列表（按置顶优先，然后按创建时间倒序，最新的在上面）
 const sortedTodos = computed(() => {
@@ -66,6 +70,42 @@ const sortedTodos = computed(() => {
     return timeB - timeA;
   });
 });
+
+/** 进入待办页时拉取全部待办（包含已完成的子待办） */
+const applyHighlight = async (todoId: number | null) => {
+  if (!todoId) return;
+  highlightTodoId.value = todoId;
+  await nextTick();
+  const target = document.querySelector(`[data-todo-id="${todoId}"]`);
+  target?.scrollIntoView({ behavior: "smooth", block: "center" });
+  if (highlightTimer.value !== null) {
+    window.clearTimeout(highlightTimer.value);
+    highlightTimer.value = null;
+  }
+  highlightTimer.value = window.setTimeout(() => {
+    highlightTodoId.value = null;
+    highlightTimer.value = null;
+  }, 2000);
+};
+
+onMounted(async () => {
+  await data.fetchTodos();
+  const raw = route.query.todoId;
+  const id = typeof raw === "string" ? Number(raw) : null;
+  if (id && !Number.isNaN(id)) {
+    await applyHighlight(id);
+  }
+});
+
+watch(
+  () => route.query.todoId,
+  async (value) => {
+    const id = typeof value === "string" ? Number(value) : null;
+    if (id && !Number.isNaN(id)) {
+      await applyHighlight(id);
+    }
+  }
+);
 
 const handleToggle = (id: number) => {
   data.toggleTodo(id);

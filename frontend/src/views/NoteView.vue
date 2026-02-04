@@ -531,8 +531,12 @@ const handleAiTodos = async () => {
     if (result.todos.length === 0) {
       toast.info("未识别到待办");
     } else {
-      await data.fetchTodos(false);
-      toast.success("AI 待办已生成");
+      await data.fetchTodos();
+      const group = result.todos.find(t => !t.group_id) || result.todos[0];
+      const groupId = group?.id;
+      toast.success("AI 待办已生成", 5000, "查看", () => {
+        router.push({ name: "todos", query: groupId ? { todoId: String(groupId) } : {} });
+      });
     }
   } catch (error: any) {
     toast.error(error.response?.data?.detail || "AI 待办生成失败");

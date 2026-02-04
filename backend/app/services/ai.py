@@ -49,6 +49,8 @@ def _normalize_todo_title(text: str) -> str:
 def _strip_completed_markers(text: str) -> tuple[str, bool]:
     """移除完成标记并返回完成状态。"""
     cleaned = text.strip()
+    cleaned = re.sub(r"^\s*[-*•+]\s*", "", cleaned)
+    cleaned = re.sub(r"^\s*\d+[.)、]\s*", "", cleaned)
     completed = False
     patterns = [
         r"^\s*\[x\]\s*",
@@ -70,8 +72,6 @@ def _strip_completed_markers(text: str) -> tuple[str, bool]:
     if not completed and "已完成" in cleaned and "未完成" not in cleaned:
         completed = True
         cleaned = cleaned.replace("已完成", "").strip()
-    cleaned = re.sub(r"^\s*[-*•+]\s*", "", cleaned)
-    cleaned = re.sub(r"^\s*\d+[.)、]\s*", "", cleaned)
     return cleaned, completed
 
 
@@ -129,7 +129,7 @@ def generate_note_todos(note_text: str) -> list[dict[str, object]]:
     client = _get_client()
     prompt = (
         "你是待办提取助手。请从用户笔记中提取待办事项，输出 JSON 数组，"
-        "数组元素为对象，字段仅包含 title。要求："
+        "数组元素为对象，字段包含 title 和 completed。要求："
         "1) 不要输出解释；2) 标题简洁明确；3) 至多 10 条；"
         "4) 如果没有待办，返回空数组；"
         "5) 含明确时间与动作的安排也视为待办（例如：2月3号出发去机场）；"
@@ -189,6 +189,7 @@ def generate_note_todos(note_text: str) -> list[dict[str, object]]:
     completed_titles = _extract_completed_titles(note_text)
     completed_norms = [_normalize_todo_title(title) for title in completed_titles]
     if completed_norms:
+        existing_norms = {_normalize_todo_title(str(item.get("title", "")).strip()) for item in todo_items}
         for item in todo_items:
             if item.get("completed"):
                 continue
@@ -200,6 +201,17 @@ def generate_note_todos(note_text: str) -> list[dict[str, object]]:
                 if normalized_title in completed_title or completed_title in normalized_title:
                     item["completed"] = True
                     break
+        for title, normalized_title in zip(completed_titles, completed_norms):
+            if not normalized_title:
+                continue
+            if normalized_title in existing_norms:
+                continue
+            if any(
+                normalized_title in exist or exist in normalized_title
+                for exist in existing_norms
+            ):
+                continue
+            todo_items.append({"title": title, "completed": True})
     if not isinstance(todo_items, list):
         raise ValueError("AI 返回的待办格式无效")
     return todo_items[:10]

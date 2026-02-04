@@ -16,6 +16,8 @@
             v-if="todo.group_items && todo.group_items.length > 0"
             :key="`group-${todo.id}`"
             :todo="todo"
+            :class="getHighlightClass(todo.id)"
+            :data-todo-id="todo.id"
             @toggle="handleToggle"
             @update-title="handleUpdateTitle"
             @delete="handleDeleteGroup"
@@ -30,6 +32,8 @@
             v-else
             :key="`item-${todo.id}`"
             :todo="todo"
+            :class="getHighlightClass(todo.id)"
+            :data-todo-id="todo.id"
             @toggle="handleToggle"
             @update-title="handleUpdateTitle"
             @delete="handleDelete"
@@ -95,6 +99,7 @@ const props = defineProps<{
   todos: Todo[];
   showCompleted?: boolean; // 是否显示已完成的待办
   compact?: boolean; // 紧凑模式（用于主页面）
+  highlightTodoId?: number | null;
 }>();
 
 const emit = defineEmits<{
@@ -118,6 +123,10 @@ const completedTodos = computed(() => {
   if (!props.showCompleted) return [];
   return props.todos.filter(t => t.completed);
 });
+
+const getHighlightClass = (id: number) => {
+  return props.highlightTodoId === id ? "todo-highlight" : "";
+};
 
 // 事件处理
 const handleToggle = (id: number) => {
@@ -203,6 +212,27 @@ const handlePin = (id: number) => {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: rgba(156, 163, 175, 0.7); /* 悬停时稍深一点 */
+}
+
+:deep(.todo-highlight) {
+  outline: 2px solid rgba(59, 130, 246, 0.85);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+  animation: todo-highlight-pulse 1.6s ease-in-out 1;
+}
+
+@keyframes todo-highlight-pulse {
+  0% {
+    outline-color: rgba(59, 130, 246, 0.2);
+    box-shadow: 0 0 0 rgba(59, 130, 246, 0);
+  }
+  50% {
+    outline-color: rgba(59, 130, 246, 0.9);
+    box-shadow: 0 0 16px rgba(59, 130, 246, 0.5);
+  }
+  100% {
+    outline-color: rgba(59, 130, 246, 0.2);
+    box-shadow: 0 0 0 rgba(59, 130, 246, 0);
+  }
 }
 
 /* 隐藏滚动条按钮（上下箭头） */

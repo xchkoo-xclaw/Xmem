@@ -125,7 +125,7 @@ export const useDataStore = defineStore("data", {
       };
     },
     async loadAll() {
-      await Promise.all([this.fetchNotes(), this.fetchLedgers(undefined, 1, 20), this.fetchTodos(false)]);
+      await Promise.all([this.fetchNotes(), this.fetchLedgers(undefined, 1, 20), this.fetchTodos()]);
     },
     async fetchNotes(searchQuery?: string) {
       const config = searchQuery && searchQuery.trim() ? { params: { q: searchQuery.trim() } } : {};
