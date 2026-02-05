@@ -36,15 +36,16 @@ COPY requirements.txt .
 
 # 安装 Python 包：尝试多个镜像源
 # 优先使用阿里云，如果失败则尝试中科大，最后回退到官方 PyPI
-RUN pip install --no-cache-dir \
+RUN pip install --no-cache-dir --timeout 120 --retries 5 \
     -i https://mirrors.aliyun.com/pypi/simple/ \
     --trusted-host mirrors.aliyun.com \
     -r requirements.txt || \
-    pip install --no-cache-dir \
+    pip install --no-cache-dir --timeout 120 --retries 5 \
     -i https://pypi.mirrors.ustc.edu.cn/simple/ \
     --trusted-host pypi.mirrors.ustc.edu.cn \
     -r requirements.txt || \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir --timeout 120 --retries 5 \
+    -r requirements.txt
 
 # 复制应用代码
 COPY app ./app
