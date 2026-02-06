@@ -32,20 +32,13 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # 复制依赖文件
-COPY requirements.txt .
+COPY pyproject.toml uv.lock ./
 
-# 安装 Python 包：尝试多个镜像源
-# 优先使用阿里云，如果失败则尝试中科大，最后回退到官方 PyPI
-RUN pip install --no-cache-dir --timeout 120 --retries 5 \
-    -i https://mirrors.aliyun.com/pypi/simple/ \
-    --trusted-host mirrors.aliyun.com \
-    -r requirements.txt || \
-    pip install --no-cache-dir --timeout 120 --retries 5 \
-    -i https://pypi.mirrors.ustc.edu.cn/simple/ \
-    --trusted-host pypi.mirrors.ustc.edu.cn \
-    -r requirements.txt || \
-    pip install --no-cache-dir --timeout 120 --retries 5 \
-    -r requirements.txt
+# 使用 uv 安装依赖，避免跨平台 requirements 带来的不兼容包
+ENV UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+ENV UV_EXTRA_INDEX_URL=https://pypi.mirrors.ustc.edu.cn/simple/ https://pypi.org/simple
+RUN pip install --no-cache-dir --timeout 120 --retries 5 uv && \
+    uv sync --system --frozen --no-dev
 
 # 复制应用代码
 COPY app ./app
