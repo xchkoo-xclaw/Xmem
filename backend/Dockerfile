@@ -36,7 +36,7 @@ COPY pyproject.toml uv.lock ./
 
 # 使用 uv 安装依赖，避免跨平台 requirements 带来的不兼容包
 ENV UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
-ENV UV_EXTRA_INDEX_URL=https://pypi.mirrors.ustc.edu.cn/simple/ https://pypi.org/simple
+ENV UV_EXTRA_INDEX_URL="https://pypi.mirrors.ustc.edu.cn/simple/ https://pypi.org/simple"
 RUN pip install --no-cache-dir --timeout 120 --retries 5 uv && \
     uv sync --system --frozen --no-dev
 
