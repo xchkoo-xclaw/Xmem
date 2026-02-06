@@ -40,7 +40,7 @@ ENV UV_EXTRA_INDEX_URL="https://pypi.mirrors.ustc.edu.cn/simple/ https://pypi.or
 ENV UV_VENV=/opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir --timeout 120 --retries 5 uv && \
-    uv sync --frozen --no-dev
+    uv sync --frozen --no-dev --no-install-project
 
 # 复制应用代码
 COPY app ./app
