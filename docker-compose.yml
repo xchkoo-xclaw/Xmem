@@ -67,13 +67,13 @@ services:
         echo '等待数据库就绪...' &&
         sleep 5 &&
         echo '确保数据库存在...' &&
-        python ensure_db.py &&
+        uv run python ensure_db.py &&
         echo '初始化表结构...' &&
-        python init_db.py &&
+        uv run python init_db.py &&
         echo '执行数据库迁移...' &&
-        alembic upgrade head &&
+        uv run alembic upgrade head &&
         echo '启动后端服务...' &&
-        uvicorn app.main:app --host 0.0.0.0 --port 8000
+        uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
       "
 
   # Celery Worker
@@ -98,7 +98,7 @@ services:
       - LLM_API_KEY=${LLM_API_KEY:-}
     volumes:
       - ./backend/uploads:/app/uploads
-    command: celery -A app.celery_app:celery_app worker --loglevel=info --pool=gevent --concurrency=20 --uid=1000
+    command: uv run celery -A app.celery_app:celery_app worker --loglevel=info --pool=gevent --concurrency=20 --uid=1000
 
   # Celery Beat (定时任务调度)
   celery-beat:
@@ -113,7 +113,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - APP_ENV=${APP_ENV:-local}
-    command: celery -A app.celery_app:celery_app beat --loglevel=info
+    command: uv run celery -A app.celery_app:celery_app beat --loglevel=info
 
   # 前端 Nginx 服务
   frontend:
