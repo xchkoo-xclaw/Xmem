@@ -32,12 +32,27 @@
                 <span v-if="contextSummary" class="text-[11px] text-muted">上下文：{{ contextSummary }}</span>
               </div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 relative">
+              <!-- 开启新对话 -->
+              <button class="icon-btn" @click="startNewConversation" title="新对话">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+              </button>
               <button class="icon-btn" @click="toggleHistory" title="历史">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3M12 22a10 10 0 100-20 10 10 0 000 20z"/>
                 </svg>
               </button>
+              <!-- 历史更多（次级菜单） -->
+              <button class="icon-btn" @click="toggleHistoryMenu" title="更多">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/>
+                </svg>
+              </button>
+              <div v-if="showHistoryMenu" class="dropdown-menu">
+                <button class="dropdown-item" @click="clearHistory">清除历史记录</button>
+              </div>
               <button class="icon-btn" @click="close" title="关闭">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -68,13 +83,9 @@
           <!-- 快速提示与空状态 -->
           <div v-if="messages.length === 0 && !loading" class="px-4 py-3 border-b border-border">
             <div class="grid grid-cols-2 gap-3">
-              <button class="prompt-card" @click="draft = '请根据当前页面内容输出要点与行动项。'; send()">
-                <div class="prompt-title">总结当前页面</div>
+              <button class="prompt-card" @click="draft = '请总结已添加到上下文的笔记，输出要点与行动项。'; send()">
+                <div class="prompt-title">总结上下文笔记</div>
                 <div class="prompt-sub">快速提取重点与行动项</div>
-              </button>
-              <button class="prompt-card" @click="draft = '把我拖拽的内容转为待办列表，并标注已完成项。'; send()">
-                <div class="prompt-title">转待办</div>
-                <div class="prompt-sub">生成清晰的可执行清单</div>
               </button>
               <button class="prompt-card" @click="draft = '分析本月消费结构并给出节省建议。'; send()">
                 <div class="prompt-title">分析当月消费</div>
@@ -88,8 +99,7 @@
           </div>
           <div v-else class="px-4 py-3 border-b border-border">
             <div class="flex gap-2 overflow-auto hide-scrollbar">
-              <button class="chip" @click="draft = '请根据当前页面内容输出要点与行动项。'; send()">总结当前页面</button>
-              <button class="chip" @click="draft = '把我拖拽的内容转为待办列表，并标注已完成项。'; send()">转待办</button>
+              <button class="chip" @click="draft = '请总结已添加到上下文的笔记，输出要点与行动项。'; send()">总结上下文笔记</button>
               <button class="chip" @click="draft = '分析本月消费结构并给出节省建议。'; send()">分析当月消费</button>
               <button class="chip" @click="draft = '优化这段文字的表达，更精炼自然。'; send()">优化写作</button>
             </div>
@@ -97,7 +107,15 @@
 
           <!-- 对话区（可滚动） -->
           <main class="flex-1 overflow-auto px-4 py-3">
-            <div class="space-y-3">
+            <!-- 新对话大卡片层级 -->
+            <div v-if="messages.length === 0 && newConversationHint" class="new-chat-card">
+              <div class="new-chat-title">开启新对话</div>
+              <div class="new-chat-desc">拖拽笔记或记账卡片到右侧作为上下文，或直接在下方输入你的问题。</div>
+              <div class="mt-3">
+                <button class="btn btn-gradient px-4 py-2" @click="focusInput">开始输入</button>
+              </div>
+            </div>
+            <div v-else class="space-y-3">
               <div v-for="(m, i) in messages" :key="i" class="flex items-start gap-3">
                 <div
                   class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] bubble-avatar"
@@ -130,6 +148,7 @@
                 class="input input-pill flex-1 min-h-[64px]"
                 placeholder="请输入问题或消息..."
                 @keydown.enter.prevent="handleEnterKey"
+                ref="inputEl"
               />
               <button class="btn btn-gradient px-4 py-2" :disabled="loading || !draft.trim()" @click="send">
                 {{ loading ? '生成中...' : '发送' }}
@@ -166,6 +185,9 @@ const loading = ref(false);
 const error = ref<string | null>(null);
 const showHistory = ref(false);
 const history = ref<{ messages: ChatMessage[]; context: ContextItem[] }[]>([]);
+const showHistoryMenu = ref(false);
+const newConversationHint = ref(false);
+const inputEl = ref<HTMLTextAreaElement | null>(null);
 
 /**
  * 关闭对话框。
@@ -184,6 +206,7 @@ const send = async () => {
   draft.value = "";
   loading.value = true;
   error.value = null;
+  newConversationHint.value = false;
   try {
     const payload = {
       messages: messages.value,
@@ -232,6 +255,7 @@ const handleDragOver = (event: DragEvent) => {
  */
 const handleDrop = (event: DragEvent) => {
   error.value = null;
+  newConversationHint.value = false;
   const dt = event.dataTransfer;
   if (!dt) return;
   let parsed: any = null;
@@ -272,6 +296,13 @@ const toggleHistory = () => {
 };
 
 /**
+ * 切换历史记录次级菜单显示。
+ */
+const toggleHistoryMenu = () => {
+  showHistoryMenu.value = !showHistoryMenu.value;
+};
+
+/**
  * 加载指定历史会话。
  */
 const loadHistory = (index: number) => {
@@ -280,6 +311,8 @@ const loadHistory = (index: number) => {
   messages.value = [...item.messages];
   contextItems.value = [...item.context];
   showHistory.value = false;
+  showHistoryMenu.value = false;
+  newConversationHint.value = false;
 };
 
 /**
@@ -299,6 +332,38 @@ const saveHistory = () => {
   list = list.slice(0, 20);
   localStorage.setItem("aiAssistantHistory", JSON.stringify(list));
   history.value = list;
+};
+
+/**
+ * 开启一条新对话：必要时先保存当前会话，然后清空消息与上下文。
+ */
+const startNewConversation = () => {
+  if (messages.value.length || contextItems.value.length) {
+    saveHistory();
+  }
+  messages.value = [];
+  contextItems.value = [];
+  draft.value = "";
+  error.value = null;
+  showHistory.value = false;
+  showHistoryMenu.value = false;
+  newConversationHint.value = true;
+};
+
+/**
+ * 聚焦输入框，便于开始输入问题。
+ */
+const focusInput = () => {
+  inputEl.value?.focus();
+};
+
+/**
+ * 清除所有历史记录。
+ */
+const clearHistory = () => {
+  localStorage.removeItem("aiAssistantHistory");
+  history.value = [];
+  showHistoryMenu.value = false;
 };
 
 /**
@@ -322,6 +387,10 @@ watch(() => props.visible, (v) => {
   // 打开时清空错误与加载态
   error.value = null;
   loading.value = false;
+});
+
+watch(draft, (val) => {
+  if (val.trim()) newConversationHint.value = false;
 });
 
 /**
@@ -443,6 +512,12 @@ const contextSummary = computed(() => {
 .icon-btn {
   @apply p-2 rounded-lg border border-border hover:border-accent/50;
 }
+.dropdown-menu {
+  @apply absolute right-2 top-10 bg-surface border border-border rounded-xl shadow-card p-2 z-[70];
+}
+.dropdown-item {
+  @apply text-sm text-text px-3 py-1.5 rounded-md hover:bg-surface2;
+}
 .chip {
   @apply px-3 py-1.5 rounded-full text-xs border;
   background: rgba(255,255,255,0.06);
@@ -451,6 +526,17 @@ const contextSummary = computed(() => {
 }
 .chip:hover {
   border-color: rgba(255,90,180,0.45);
+}
+.new-chat-card {
+  @apply rounded-2xl border px-4 py-6 text-center;
+  border-color: rgba(255,90,180,0.28);
+  background: linear-gradient(135deg, rgba(255,90,180,0.06), rgba(90,170,255,0.06));
+}
+.new-chat-title {
+  @apply text-base font-semibold text-text;
+}
+.new-chat-desc {
+  @apply text-xs text-muted mt-1;
 }
 .hide-scrollbar::-webkit-scrollbar {
   display: none;

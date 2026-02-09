@@ -230,6 +230,7 @@ onUnmounted(() => {
 .ai-main:hover {
   border-color: var(--fab-border-hover);
   box-shadow: var(--fab-shadow-hover);
+  @apply ring-4 ring-accent/20;
 }
 .xia-logo {
   display: block;
