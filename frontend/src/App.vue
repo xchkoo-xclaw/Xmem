@@ -21,6 +21,7 @@
     <FabMenu
       v-if="user.token && !route.path.includes('/editor')"
       @settings="showSettings = true"
+      @assistant="showAssistant = true"
       @notes="router.push('/notes')"
       @home="router.push('/')"
       @ledgers="router.push('/ledgers')"
@@ -29,6 +30,7 @@
     />
 
     <Settings v-if="user.token" :visible="showSettings" @close="showSettings = false" />
+    <AiAssistant v-if="user.token" :visible="showAssistant" @close="showAssistant = false" />
 
     <Toast />
 
@@ -61,6 +63,7 @@ import Toast from "./components/Toast.vue";
 import ConfirmDialog from "./components/ConfirmDialog.vue";
 import LedgerEditor from "./components/LedgerEditor.vue";
 import LoadingOverlay from "./components/LoadingOverlay.vue";
+import AiAssistant from "./components/AiAssistant.vue";
 import { useUserStore } from "./stores/user";
 import { useConfirmStore } from "./stores/confirm";
 import { usePreferencesStore } from "./stores/preferences";
@@ -77,5 +80,6 @@ usePreferencesStore().init();
 
 // 全局 UI 状态
 const showSettings = ref(false);
+const showAssistant = ref(false);
 
 </script>

@@ -227,14 +227,14 @@
               <router-link
                 v-if="remainingNotesCount > 0"
                 :to="{ name: 'notes' }"
-                class="card relative group hover:shadow-lg transition-all duration-200 cursor-pointer flex items-center justify-center min-h-[200px] bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 hover:border-gray-400"
+                class="card card-ellipsis relative group hover:shadow-float transition-all duration-200 cursor-pointer flex items-center justify-center min-h-[200px] border-2 border-dashed"
               >
                 <div class="text-center">
-                  <div class="text-4xl font-light text-gray-400 mb-2">⋯</div>
-                  <div class="text-sm text-gray-600 font-medium">
+                  <div class="text-4xl font-light text-muted mb-2">⋯</div>
+                  <div class="text-sm text-muted font-medium">
                     还有 <span class="text-text font-semibold">{{ remainingNotesCount }}</span> 条笔记
                   </div>
-                  <div class="text-xs text-gray-500 mt-1">点击查看全部</div>
+                  <div class="text-xs text-muted mt-1">点击查看全部</div>
                 </div>
               </router-link>
             </div>
@@ -1246,6 +1246,13 @@ const getGreeting = () => {
 }
 .card {
   @apply bg-surface p-4 rounded-xl shadow-card border border-border;
+}
+.card-ellipsis {
+  background-color: rgb(var(--c-surface));
+  border-color: rgb(var(--c-border));
+}
+.card-ellipsis:hover {
+  border-color: rgba(var(--c-border), 0.8);
 }
 .section-title {
   @apply text-sm font-semibold text-muted mb-2;

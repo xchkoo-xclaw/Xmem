@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div draggable="true" @dragstart="handleDragStart">
     <!-- 第一行：消费金额 货币 | 商家 | 分类 -->
     <div class="flex justify-between items-center mb-2">
       <div class="font-semibold text-lg">
@@ -62,6 +62,23 @@ const formatTime = (time: string) => {
     hour: '2-digit',
     minute: '2-digit'
   });
+};
+
+/**
+ * 处理记账条目拖拽，写入自定义数据格式。
+ */
+const handleDragStart = (event: DragEvent) => {
+  if (!event.dataTransfer) return;
+  const payload = {
+    type: "ledger",
+    id: props.ledger.id,
+    raw_text: props.ledger.raw_text || "",
+    amount: props.ledger.amount ?? null,
+    category: props.ledger.category ?? null,
+  };
+  event.dataTransfer.setData("application/x-xmem", JSON.stringify(payload));
+  event.dataTransfer.setData("text/plain", props.ledger.raw_text || "");
+  event.dataTransfer.effectAllowed = "copy";
 };
 </script>
 

@@ -8,6 +8,30 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
       </svg>
     </button>
+    <!-- AI 助手入口（与刷新、主题同层级，低调但可识别） -->
+    <button
+      v-if="!isMobile || open"
+      class="fab-main ai-main"
+      title="Xia 助手"
+      aria-label="Xia 助手"
+      @click="$emit('assistant')"
+    >
+      <!-- Xia 品牌图形标识：左侧 X、i 的点、右侧 a 的环形 -->
+      <svg class="xia-logo" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+        <defs>
+          <linearGradient id="xiaGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="var(--xia-c1)" />
+            <stop offset="100%" stop-color="var(--xia-c2)" />
+          </linearGradient>
+        </defs>
+        <!-- X -->
+        <path d="M3.8 6.2 L8.6 11 M8.6 6.2 L3.8 11" stroke="url(#xiaGrad)" stroke-width="2" stroke-linecap="round" />
+        <!-- i 的点 -->
+        <circle cx="12.4" cy="5.4" r="1.2" fill="url(#xiaGrad)" />
+        <!-- a 的环形与轻微尾巴 -->
+        <path d="M12 9.5a3.8 3.8 0 1 0 7.6 0c0-1.7-1.1-3.2-2.6-3.7" fill="none" stroke="url(#xiaGrad)" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    </button>
     <!-- 主题切换按钮（始终显示，位置会根据菜单是否打开而改变） -->
     <button
       v-if="!isMobile || open"
@@ -115,6 +139,7 @@ import { useThemeStore } from "../stores/theme";
 
 defineEmits<{
   home: [];
+  assistant: [];
   notes: [];
   ledgers: [];
   todos: [];
@@ -182,10 +207,54 @@ onUnmounted(() => {
   @apply fixed inset-0 z-40;
 }
 .fab-main {
-  @apply w-14 h-14 rounded-full bg-accent text-on-accent text-2xl shadow-float flex items-center justify-center transition-transform duration-200 active:scale-95;
+  @apply w-14 h-14 rounded-full text-2xl flex items-center justify-center transition-transform duration-200 active:scale-95 hover:ring-4 hover:ring-accent/20;
 }
 .fab-sub {
-  @apply px-3 py-2 rounded-full bg-surface shadow-float text-sm text-text border border-border hover:-translate-y-1 transition-all duration-200;
+  @apply px-3 py-2 rounded-full text-sm transition-all duration-200;
+}
+:is(.fab-main, .fab-sub) {
+  background-color: var(--fab-bg);
+  color: var(--fab-text);
+  border: 1px solid var(--fab-border);
+  box-shadow: var(--fab-shadow);
+}
+.fab-sub:hover {
+  transform: translateY(-4px);
+}
+.ai-main {
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  --xia-c1: #5b9dff;
+  --xia-c2: #ff82c8;
+}
+.ai-main:hover {
+  border-color: var(--fab-border-hover);
+  box-shadow: var(--fab-shadow-hover);
+}
+.xia-logo {
+  display: block;
+}
+:global(.dark) .ai-main {
+  --xia-c1: #9fc2ff;
+  --xia-c2: #ffaddb;
+  border-color: rgba(160, 200, 255, 0.30);
+  box-shadow: 0 8px 18px rgba(160, 200, 255, 0.12);
+}
+:global(html[data-theme="light"]) .fab-wrapper {
+  --fab-bg: rgb(255, 255, 255);
+  --fab-text: rgb(31, 41, 55);
+  --fab-border: rgba(90, 170, 255, 0.18);
+  --fab-border-hover: rgba(90, 170, 255, 0.32);
+  --fab-shadow: 0 6px 14px rgba(90, 170, 255, 0.10);
+  --fab-shadow-hover: 0 10px 20px rgba(90, 170, 255, 0.14);
+}
+:global(html[data-theme="dark"]) .fab-wrapper {
+  --fab-bg: rgb(17, 24, 39);
+  --fab-text: rgb(255, 255, 255);
+  --fab-border: rgba(160, 200, 255, 0.30);
+  --fab-border-hover: rgba(160, 200, 255, 0.42);
+  --fab-shadow: 0 8px 18px rgba(160, 200, 255, 0.12);
+  --fab-shadow-hover: 0 10px 22px rgba(160, 200, 255, 0.16);
 }
 .fab-collapsed {
   right: -28px;

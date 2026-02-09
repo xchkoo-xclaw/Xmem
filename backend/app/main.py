@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from urllib.parse import urlsplit
 
 from .db import engine, Base
-from .routers import auth, notes, ledger, todos, exports
+from .routers import auth, notes, ledger, todos, exports, ai
 from .auth import get_current_user
 from .config import settings
 
@@ -115,4 +115,5 @@ app.include_router(notes.router, dependencies=[Depends(get_current_user)])
 
 app.include_router(ledger.router, dependencies=[Depends(get_current_user)])
 app.include_router(todos.router, dependencies=[Depends(get_current_user)])
+app.include_router(ai.router, dependencies=[Depends(get_current_user)])
 

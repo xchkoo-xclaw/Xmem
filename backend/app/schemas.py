@@ -1,5 +1,5 @@
 import datetime as dt
-from typing import Optional, List
+from typing import Optional, List, Literal
 
 from pydantic import BaseModel, EmailStr
 
@@ -108,6 +108,37 @@ class NoteAiSummaryOut(BaseModel):
 
 class NoteAiTodosOut(BaseModel):
     todos: list["TodoOut"]
+
+
+class ChatMessageIn(BaseModel):
+    role: Literal["user", "assistant", "system"]
+    content: str
+
+
+class ChatContextNote(BaseModel):
+    id: int
+    body_md: str
+
+
+class ChatContextLedger(BaseModel):
+    id: int
+    raw_text: str
+    amount: Optional[float] = None
+    category: Optional[str] = None
+
+
+class ChatContext(BaseModel):
+    notes: list[ChatContextNote] = []
+    ledgers: list[ChatContextLedger] = []
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessageIn]
+    context: Optional[ChatContext] = None
+
+
+class ChatResponse(BaseModel):
+    reply: str
 
 
 class NoteExportEstimateIn(BaseModel):

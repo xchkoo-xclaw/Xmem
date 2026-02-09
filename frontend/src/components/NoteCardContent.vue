@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div draggable="true" @dragstart="handleDragStart">
     <!-- 笔记内容 -->
     <div 
       :ref="(el) => handleNoteHeightRef(el)"
@@ -174,6 +174,21 @@ const formatTime = (timeStr: string) => {
     hour: '2-digit',
     minute: '2-digit'
   });
+};
+
+/**
+ * 处理笔记拖拽，写入自定义数据格式。
+ */
+const handleDragStart = (event: DragEvent) => {
+  if (!event.dataTransfer) return;
+  const payload = {
+    type: "note",
+    id: props.note.id,
+    body_md: props.note.body_md || "",
+  };
+  event.dataTransfer.setData("application/x-xmem", JSON.stringify(payload));
+  event.dataTransfer.setData("text/plain", props.note.body_md || "");
+  event.dataTransfer.effectAllowed = "copy";
 };
 </script>
 
