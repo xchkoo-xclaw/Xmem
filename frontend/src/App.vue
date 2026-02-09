@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-bg text-text">
+  <div class="min-h-screen bg-bg text-text" :class="{ 'ai-docked': isAssistantDocked }">
     <router-view />
 
     <transition
@@ -30,7 +30,13 @@
     />
 
     <Settings v-if="user.token" :visible="showSettings" @close="showSettings = false" />
-    <AiAssistant v-if="user.token" :visible="showAssistant" @close="showAssistant = false" />
+    <AiAssistant
+      v-if="user.token && !route.path.includes('/editor')"
+      :visible="showAssistant"
+      :isDesktop="isDesktop"
+      :docked="isAssistantDocked"
+      @close="showAssistant = false"
+    />
 
     <Toast />
 
@@ -55,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import FabMenu from "./components/FabMenu.vue";
 import Settings from "./components/Settings.vue";
@@ -81,5 +87,35 @@ usePreferencesStore().init();
 // 全局 UI 状态
 const showSettings = ref(false);
 const showAssistant = ref(false);
+const windowWidth = ref(typeof window !== "undefined" ? window.innerWidth : 1200);
+const isDesktop = computed(() => windowWidth.value > 900);
+const isAssistantDocked = computed(() => isDesktop.value && showAssistant.value);
+
+/**
+ * 同步窗口宽度到本地状态。
+ */
+const syncWindowWidth = () => {
+  windowWidth.value = window.innerWidth;
+};
+
+onMounted(() => {
+  window.addEventListener("resize", syncWindowWidth);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", syncWindowWidth);
+});
+
+watch(() => route.path, (path) => {
+  if (path.includes("/editor")) {
+    showAssistant.value = false;
+  }
+});
 
 </script>
+
+<style scoped>
+.ai-docked {
+  padding-right: 460px;
+}
+</style>

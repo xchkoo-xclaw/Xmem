@@ -1,9 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="fixed inset-0 z-[60]">
-      <div class="absolute inset-0 bg-overlay/40" @click="close"></div>
-
-      <!-- 右侧侧栏 -->
+    <template v-if="visible && docked">
       <transition
         enter-active-class="transition-transform duration-200"
         enter-from-class="translate-x-full"
@@ -13,9 +10,10 @@
         leave-to-class="translate-x-full"
       >
         <aside
-          v-if="visible"
-          class="fixed inset-y-0 right-0 w-[92vw] sm:w-[460px] bg-surface border-l border-border shadow-card flex flex-col ai-assistant"
-          :class="{ 'ai-soft-loading': loading }"
+          class="fixed inset-y-0 right-0 w-[92vw] sm:w-[460px] bg-surface border-l border-border shadow-card flex flex-col ai-assistant z-[60]"
+          :class="{ 'ai-soft-loading': loading, 'ai-dragover': isDragOver }"
+          @dragenter.prevent="handleDragEnter"
+          @dragleave.prevent="handleDragLeave"
           @dragover.prevent="handleDragOver"
           @drop.prevent="handleDrop"
           role="complementary"
@@ -83,15 +81,15 @@
           <!-- 快速提示与空状态 -->
           <div v-if="messages.length === 0 && !loading" class="px-4 py-3 border-b border-border">
             <div class="grid grid-cols-2 gap-3">
-              <button class="prompt-card" @click="draft = '请总结已添加到上下文的笔记，输出要点与行动项。'; send()">
+              <button class="prompt-card" @click="sendWithText('请总结已添加到上下文的笔记，输出要点与行动项。')">
                 <div class="prompt-title">总结上下文笔记</div>
                 <div class="prompt-sub">快速提取重点与行动项</div>
               </button>
-              <button class="prompt-card" @click="draft = '分析本月消费结构并给出节省建议。'; send()">
+              <button class="prompt-card" @click="sendWithText('分析本月消费结构并给出节省建议。')">
                 <div class="prompt-title">分析当月消费</div>
                 <div class="prompt-sub">洞察结构与优化建议</div>
               </button>
-              <button class="prompt-card" @click="draft = '优化这段文字的表达，更精炼自然。'; send()">
+              <button class="prompt-card" @click="sendWithText('优化这段文字的表达，更精炼自然。')">
                 <div class="prompt-title">优化写作</div>
                 <div class="prompt-sub">让表达更清晰专业</div>
               </button>
@@ -99,9 +97,9 @@
           </div>
           <div v-else class="px-4 py-3 border-b border-border">
             <div class="flex gap-2 overflow-auto hide-scrollbar">
-              <button class="chip" @click="draft = '请总结已添加到上下文的笔记，输出要点与行动项。'; send()">总结上下文笔记</button>
-              <button class="chip" @click="draft = '分析本月消费结构并给出节省建议。'; send()">分析当月消费</button>
-              <button class="chip" @click="draft = '优化这段文字的表达，更精炼自然。'; send()">优化写作</button>
+              <button class="chip" @click="sendWithText('请总结已添加到上下文的笔记，输出要点与行动项。')">总结上下文笔记</button>
+              <button class="chip" @click="sendWithText('分析本月消费结构并给出节省建议。')">分析当月消费</button>
+              <button class="chip" @click="sendWithText('优化这段文字的表达，更精炼自然。')">优化写作</button>
             </div>
           </div>
 
@@ -140,17 +138,236 @@
           <!-- 底部输入栏 -->
           <footer class="px-4 py-3 border-t border-border">
             <div class="text-xs text-muted mb-2">
-              支持拖拽笔记或记账卡片到侧栏，自动作为上下文；Shift+Enter 换行，Enter 发送。
+              {{ isDesktop ? "支持拖拽笔记或记账卡片到侧栏，自动作为上下文；Shift+Enter 换行，Enter 发送。" : "点击附件选择笔记或记账作为上下文；Shift+Enter 换行，Enter 发送。" }}
             </div>
-            <div class="flex items-end gap-3">
-              <textarea
-                v-model="draft"
-                class="input input-pill flex-1 min-h-[64px]"
-                placeholder="请输入问题或消息..."
-                @keydown.enter.prevent="handleEnterKey"
-                ref="inputEl"
+            <div class="flex items-end gap-3 relative">
+              <div
+                ref="editorEl"
+                class="input input-pill flex-1 min-h-[64px] draft-editor"
+                contenteditable="true"
+                data-placeholder="请输入问题或消息..."
+                @input="handleEditorInput"
+                @keydown="handleEditorKeydown"
+                @paste="handlePaste"
+                @copy="handleCopy"
+                @cut="handleCut"
               />
-              <button class="btn btn-gradient px-4 py-2" :disabled="loading || !draft.trim()" @click="send">
+              <div v-if="!isDesktop" class="relative">
+                <button class="icon-btn" title="添加附件" @click="toggleAttachMenu">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21.44 11.05l-9.9 9.9a5.5 5.5 0 01-7.78-7.78l9.9-9.9a3.5 3.5 0 015 5l-9.2 9.2a1.5 1.5 0 11-2.12-2.12l8.5-8.5" />
+                  </svg>
+                </button>
+                <div v-if="showAttachMenu" class="dropdown-menu right-0 w-64">
+                  <div class="dropdown-section-title">选择笔记</div>
+                  <div v-if="data.notes.length === 0" class="dropdown-empty">暂无笔记</div>
+                  <button
+                    v-for="n in data.notes.slice(0, 5)"
+                    :key="n.id"
+                    class="dropdown-item"
+                    @click="attachNote(n.id)"
+                  >#{{ n.id }}</button>
+                  <div class="dropdown-divider"></div>
+                  <div class="dropdown-section-title">选择记账</div>
+                  <div v-if="data.ledgers.length === 0" class="dropdown-empty">暂无记账</div>
+                  <button
+                    v-for="l in data.ledgers.slice(0, 5)"
+                    :key="l.id"
+                    class="dropdown-item"
+                    @click="attachLedger(l.id)"
+                  >#{{ l.id }}</button>
+                </div>
+              </div>
+              <button class="btn btn-gradient px-4 py-2" :disabled="loading || !draftText.trim()" @click="send">
+                {{ loading ? '生成中...' : '发送' }}
+              </button>
+            </div>
+          </footer>
+        </aside>
+      </transition>
+    </template>
+    <div v-else-if="visible" class="fixed inset-0 z-[60]">
+      <div class="absolute inset-0 bg-overlay/40" @click="close"></div>
+
+      <!-- 右侧侧栏 -->
+      <transition
+        enter-active-class="transition-transform duration-200"
+        enter-from-class="translate-x-full"
+        enter-to-class="translate-x-0"
+        leave-active-class="transition-transform duration-150"
+        leave-from-class="translate-x-0"
+        leave-to-class="translate-x-full"
+      >
+        <aside
+          class="fixed inset-y-0 right-0 w-[92vw] sm:w-[460px] bg-surface border-l border-border shadow-card flex flex-col ai-assistant z-[60]"
+          :class="{ 'ai-soft-loading': loading, 'ai-dragover': isDragOver }"
+          @dragenter.prevent="handleDragEnter"
+          @dragleave.prevent="handleDragLeave"
+          @dragover.prevent="handleDragOver"
+          @drop.prevent="handleDrop"
+          role="complementary"
+          aria-label="AI 助手侧栏"
+        >
+          <!-- 顶部栏 -->
+          <header class="px-4 py-3 border-b border-border flex items-center justify-between brand-header">
+            <div class="flex items-center gap-2">
+              <div class="brand-chip">
+                <span class="brand-x">X</span><span class="brand-ia">ia</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-sm font-semibold text-text">xmem intelligence assistant</span>
+                <span v-if="contextSummary" class="text-[11px] text-muted">上下文：{{ contextSummary }}</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 relative">
+              <!-- 开启新对话 -->
+              <button class="icon-btn" @click="startNewConversation" title="新对话">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+              </button>
+              <button class="icon-btn" @click="toggleHistory" title="历史">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3M12 22a10 10 0 100-20 10 10 0 000 20z"/>
+                </svg>
+              </button>
+              <!-- 历史更多（次级菜单） -->
+              <button class="icon-btn" @click="toggleHistoryMenu" title="更多">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/>
+                </svg>
+              </button>
+              <div v-if="showHistoryMenu" class="dropdown-menu">
+                <button class="dropdown-item" @click="clearHistory">清除历史记录</button>
+              </div>
+              <button class="icon-btn" @click="close" title="关闭">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </header>
+
+          <!-- 历史记录（可折叠） -->
+          <div v-if="showHistory" class="px-4 py-3 border-b border-border">
+            <div v-if="history.length === 0" class="empty-muted">暂无历史记录</div>
+            <div v-else class="history-grid">
+              <button
+                v-for="(item, idx) in history"
+                :key="idx"
+                class="history-card"
+                @click="loadHistory(idx)"
+              >
+                <div class="history-title">会话 {{ idx + 1 }}</div>
+                <div class="history-meta">消息数 {{ item.messages.length }}</div>
+                <div class="history-preview">
+                  {{ item.messages[item.messages.length - 1]?.content || '...' }}
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- 快速提示与空状态 -->
+          <div v-if="messages.length === 0 && !loading" class="px-4 py-3 border-b border-border">
+            <div class="grid grid-cols-2 gap-3">
+              <button class="prompt-card" @click="sendWithText('请总结已添加到上下文的笔记，输出要点与行动项。')">
+                <div class="prompt-title">总结上下文笔记</div>
+                <div class="prompt-sub">快速提取重点与行动项</div>
+              </button>
+              <button class="prompt-card" @click="sendWithText('分析本月消费结构并给出节省建议。')">
+                <div class="prompt-title">分析当月消费</div>
+                <div class="prompt-sub">洞察结构与优化建议</div>
+              </button>
+              <button class="prompt-card" @click="sendWithText('优化这段文字的表达，更精炼自然。')">
+                <div class="prompt-title">优化写作</div>
+                <div class="prompt-sub">让表达更清晰专业</div>
+              </button>
+            </div>
+          </div>
+          <div v-else class="px-4 py-3 border-b border-border">
+            <div class="flex gap-2 overflow-auto hide-scrollbar">
+              <button class="chip" @click="sendWithText('请总结已添加到上下文的笔记，输出要点与行动项。')">总结上下文笔记</button>
+              <button class="chip" @click="sendWithText('分析本月消费结构并给出节省建议。')">分析当月消费</button>
+              <button class="chip" @click="sendWithText('优化这段文字的表达，更精炼自然。')">优化写作</button>
+            </div>
+          </div>
+
+          <!-- 对话区（可滚动） -->
+          <main class="flex-1 overflow-auto px-4 py-3">
+            <!-- 新对话大卡片层级 -->
+            <div v-if="messages.length === 0 && newConversationHint" class="new-chat-card">
+              <div class="new-chat-title">开启新对话</div>
+              <div class="new-chat-desc">拖拽笔记或记账卡片到右侧作为上下文，或直接在下方输入你的问题。</div>
+              <div class="mt-3">
+                <button class="btn btn-gradient px-4 py-2" @click="focusInput">开始输入</button>
+              </div>
+            </div>
+            <div v-else class="space-y-3">
+              <div v-for="(m, i) in messages" :key="i" class="flex items-start gap-3">
+                <div
+                  class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] bubble-avatar"
+                  :class="m.role === 'user' ? 'bubble-avatar-user' : 'bubble-avatar-ai'"
+                >
+                  {{ m.role === 'user' ? '我' : 'Xia' }}
+                </div>
+                <div
+                  class="flex-1 text-sm whitespace-pre-wrap bubble"
+                  :class="m.role === 'user' ? 'bubble-user' : 'bubble-ai'"
+                >{{ m.content }}</div>
+              </div>
+              <div v-if="loading" class="space-y-2">
+                <div class="ai-skeleton-line w-3/4"></div>
+                <div class="ai-skeleton-line w-2/3"></div>
+                <div class="ai-skeleton-line w-1/2"></div>
+              </div>
+              <div v-if="error" class="text-xs text-red-500">{{ error }}</div>
+            </div>
+          </main>
+
+          <!-- 底部输入栏 -->
+          <footer class="px-4 py-3 border-t border-border">
+            <div class="text-xs text-muted mb-2">
+              {{ isDesktop ? "支持拖拽笔记或记账卡片到侧栏，自动作为上下文；Shift+Enter 换行，Enter 发送。" : "点击附件选择笔记或记账作为上下文；Shift+Enter 换行，Enter 发送。" }}
+            </div>
+            <div class="flex items-end gap-3 relative">
+              <div
+                ref="editorEl"
+                class="input input-pill flex-1 min-h-[64px] draft-editor"
+                contenteditable="true"
+                data-placeholder="请输入问题或消息..."
+                @input="handleEditorInput"
+                @keydown="handleEditorKeydown"
+                @paste="handlePaste"
+                @copy="handleCopy"
+                @cut="handleCut"
+              />
+              <div v-if="!isDesktop" class="relative">
+                <button class="icon-btn" title="添加附件" @click="toggleAttachMenu">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21.44 11.05l-9.9 9.9a5.5 5.5 0 01-7.78-7.78l9.9-9.9a3.5 3.5 0 015 5l-9.2 9.2a1.5 1.5 0 11-2.12-2.12l8.5-8.5" />
+                  </svg>
+                </button>
+                <div v-if="showAttachMenu" class="dropdown-menu right-0 w-64">
+                  <div class="dropdown-section-title">选择笔记</div>
+                  <div v-if="data.notes.length === 0" class="dropdown-empty">暂无笔记</div>
+                  <button
+                    v-for="n in data.notes.slice(0, 5)"
+                    :key="n.id"
+                    class="dropdown-item"
+                    @click="attachNote(n.id)"
+                  >#{{ n.id }}</button>
+                  <div class="dropdown-divider"></div>
+                  <div class="dropdown-section-title">选择记账</div>
+                  <div v-if="data.ledgers.length === 0" class="dropdown-empty">暂无记账</div>
+                  <button
+                    v-for="l in data.ledgers.slice(0, 5)"
+                    :key="l.id"
+                    class="dropdown-item"
+                    @click="attachLedger(l.id)"
+                  >#{{ l.id }}</button>
+                </div>
+              </div>
+              <button class="btn btn-gradient px-4 py-2" :disabled="loading || !draftText.trim()" @click="send">
                 {{ loading ? '生成中...' : '发送' }}
               </button>
             </div>
@@ -162,11 +379,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch, nextTick } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import api from "../api/client";
+import { useDataStore } from "../stores/data";
+import { useToastStore } from "../stores/toast";
 
 const props = defineProps<{
   visible: boolean;
+  isDesktop: boolean;
+  docked: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -180,14 +401,18 @@ type ContextItem =
 
 const messages = ref<ChatMessage[]>([]);
 const contextItems = ref<ContextItem[]>([]);
-const draft = ref("");
+const draftText = ref("");
 const loading = ref(false);
 const error = ref<string | null>(null);
 const showHistory = ref(false);
 const history = ref<{ messages: ChatMessage[]; context: ContextItem[] }[]>([]);
 const showHistoryMenu = ref(false);
 const newConversationHint = ref(false);
-const inputEl = ref<HTMLTextAreaElement | null>(null);
+const editorEl = ref<HTMLDivElement | null>(null);
+const data = useDataStore();
+const showAttachMenu = ref(false);
+const toast = useToastStore();
+const isDragOver = ref(false);
 
 /**
  * 关闭对话框。
@@ -197,16 +422,155 @@ const close = () => {
 };
 
 /**
+ * 从节点中提取文本，展开上下文 token。
+ */
+const buildTextFromNode = (node: Node): string => {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.textContent ?? "";
+  }
+  if (node.nodeType === Node.ELEMENT_NODE) {
+    const el = node as HTMLElement;
+    if (el.classList.contains("draft-token")) {
+      return el.dataset.text ?? el.textContent ?? "";
+    }
+    return Array.from(el.childNodes).map(buildTextFromNode).join("");
+  }
+  if (node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
+    return Array.from(node.childNodes).map(buildTextFromNode).join("");
+  }
+  return "";
+};
+
+/**
+ * 获取输入框内的纯文本内容（包含展开后的 token）。
+ */
+const extractDraftText = () => {
+  if (!editorEl.value) return "";
+  return buildTextFromNode(editorEl.value);
+};
+
+/**
+ * 更新草稿文本状态。
+ */
+const updateDraftText = () => {
+  draftText.value = extractDraftText();
+};
+
+/**
+ * 设置输入框文本并将光标置于末尾。
+ */
+const setEditorText = (text: string) => {
+  if (!editorEl.value) return;
+  editorEl.value.innerText = text;
+  const range = document.createRange();
+  range.selectNodeContents(editorEl.value);
+  range.collapse(false);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+  updateDraftText();
+};
+
+/**
+ * 判断选区是否位于输入框内。
+ */
+const isSelectionInEditor = () => {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || !editorEl.value) return false;
+  const range = sel.getRangeAt(0);
+  return editorEl.value.contains(range.startContainer);
+};
+
+/**
+ * 在光标处插入纯文本。
+ */
+const insertTextAtCursor = (text: string) => {
+  if (!editorEl.value) return;
+  if (!isSelectionInEditor()) {
+    editorEl.value.appendChild(document.createTextNode(text));
+    const range = document.createRange();
+    range.selectNodeContents(editorEl.value);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    return;
+  }
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+  const range = sel.getRangeAt(0);
+  range.deleteContents();
+  const textNode = document.createTextNode(text);
+  range.insertNode(textNode);
+  range.setStartAfter(textNode);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+};
+
+/**
+ * 在光标处插入上下文 token。
+ */
+const insertToken = (label: string, expandedText: string, linkHref?: string) => {
+  if (!editorEl.value) return;
+  if (!isSelectionInEditor()) {
+    const range = document.createRange();
+    range.selectNodeContents(editorEl.value);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+  }
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+  const range = sel.getRangeAt(0);
+  range.deleteContents();
+  const token = document.createElement("a");
+  token.className = "draft-token";
+  token.textContent = label;
+  token.dataset.text = expandedText;
+  token.contentEditable = "false";
+  if (linkHref) {
+    token.href = linkHref;
+    token.target = "_blank";
+    token.rel = "noopener";
+  } else {
+    token.href = "javascript:void(0)";
+  }
+  const space = document.createTextNode(" ");
+  range.insertNode(space);
+  range.insertNode(token);
+  range.setStartAfter(space);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+  updateDraftText();
+};
+
+/**
+ * 获取当前选区文本（展开 token）。
+ */
+const getSelectionText = () => {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return extractDraftText();
+  const range = sel.getRangeAt(0);
+  const fragment = range.cloneContents();
+  return buildTextFromNode(fragment);
+};
+
+/**
  * 发送当前草稿消息并请求 AI 回复。
  */
 const send = async () => {
-  if (!draft.value.trim()) return;
-  const content = draft.value.trim();
+  const content = draftText.value.trim();
+  if (!content) return;
   messages.value.push({ role: "user", content });
-  draft.value = "";
+  if (editorEl.value) editorEl.value.innerHTML = "";
+  draftText.value = "";
   loading.value = true;
   error.value = null;
   newConversationHint.value = false;
+  showAttachMenu.value = false;
   try {
     const payload = {
       messages: messages.value,
@@ -227,27 +591,96 @@ const send = async () => {
 };
 
 /**
- * 处理输入框 Enter 行为：Shift+Enter 换行，Enter 发送。
+ * 切换附件菜单（移动端）。
  */
-const handleEnterKey = (event: KeyboardEvent) => {
-  if (event.shiftKey) {
-    const el = event.target as HTMLTextAreaElement;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    draft.value = draft.value.slice(0, start) + "\n" + draft.value.slice(end);
-    nextTick(() => {
-      el.selectionStart = el.selectionEnd = start + 1;
-    });
+const toggleAttachMenu = () => {
+  showAttachMenu.value = !showAttachMenu.value;
+};
+
+/**
+ * 处理输入框内容变化。
+ */
+const handleEditorInput = () => {
+  updateDraftText();
+  if (draftText.value.trim()) newConversationHint.value = false;
+};
+
+/**
+ * 处理输入框按键行为。
+ */
+const handleEditorKeydown = (event: KeyboardEvent) => {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    send();
     return;
   }
-  send();
+  if (event.key === "Enter" && event.shiftKey) {
+    event.preventDefault();
+    insertTextAtCursor("\n");
+    updateDraftText();
+  }
+};
+
+/**
+ * 处理输入框粘贴，保持纯文本。
+ */
+const handlePaste = (event: ClipboardEvent) => {
+  event.preventDefault();
+  const text = event.clipboardData?.getData("text/plain") ?? "";
+  insertTextAtCursor(text);
+  updateDraftText();
+};
+
+/**
+ * 处理复制，将 token 展开为纯文本。
+ */
+const handleCopy = (event: ClipboardEvent) => {
+  const text = getSelectionText();
+  if (!text) return;
+  event.preventDefault();
+  event.clipboardData?.setData("text/plain", text);
+};
+
+/**
+ * 处理剪切，将 token 展开为纯文本并删除选区。
+ */
+const handleCut = (event: ClipboardEvent) => {
+  const text = getSelectionText();
+  if (!text) return;
+  event.preventDefault();
+  event.clipboardData?.setData("text/plain", text);
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    sel.getRangeAt(0).deleteContents();
+    updateDraftText();
+  }
+};
+
+/**
+ * 处理拖拽进入侧栏，显示高亮。
+ */
+const handleDragEnter = () => {
+  if (!props.isDesktop) return;
+  isDragOver.value = true;
+};
+
+/**
+ * 处理拖拽离开侧栏，取消高亮。
+ */
+const handleDragLeave = () => {
+  if (!props.isDesktop) return;
+  isDragOver.value = false;
 };
 
 /**
  * 处理拖拽进入状态（用于显示复制鼠标指示）。
  */
 const handleDragOver = (event: DragEvent) => {
-  event.dataTransfer!.dropEffect = "copy";
+  if (!props.isDesktop) return;
+  isDragOver.value = true;
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = "copy";
+  }
 };
 
 /**
@@ -256,6 +689,8 @@ const handleDragOver = (event: DragEvent) => {
 const handleDrop = (event: DragEvent) => {
   error.value = null;
   newConversationHint.value = false;
+  isDragOver.value = false;
+  if (!props.isDesktop) return;
   const dt = event.dataTransfer;
   if (!dt) return;
   let parsed: any = null;
@@ -267,23 +702,44 @@ const handleDrop = (event: DragEvent) => {
   } catch {
     parsed = null;
   }
-  if (parsed && parsed.type === "note" && parsed.body_md) {
-    contextItems.value.push({ type: "note", id: parsed.id, body_md: parsed.body_md });
-  } else if (parsed && parsed.type === "ledger" && parsed.raw_text) {
+  if (parsed && parsed.type === "note") {
+    const note = data.notes.find(n => n.id === parsed.id);
+    const body = parsed.body_md ?? note?.body_md ?? "";
+    const id = parsed.id ?? note?.id ?? Date.now();
+    const expanded = `【笔记#${id}】\n${body}`.trim();
+    contextItems.value.push({ type: "note", id, body_md: body });
+    insertToken(`笔记#${id}`, expanded, `/note/${id}`);
+    toast.success("已加入上下文：笔记");
+    return;
+  }
+  if (parsed && parsed.type === "ledger") {
+    const ledger = data.ledgers.find(l => l.id === parsed.id);
+    const rawText = parsed.raw_text ?? ledger?.raw_text ?? "";
+    const id = parsed.id ?? ledger?.id ?? Date.now();
+    const amountText = parsed.amount ?? ledger?.amount;
+    const categoryText = parsed.category ?? ledger?.category;
+    const expanded = `【记账#${id}】${rawText}${amountText ? ` 金额:${amountText}` : ""}${categoryText ? ` 分类:${categoryText}` : ""}`;
     contextItems.value.push({
       type: "ledger",
-      id: parsed.id,
-      raw_text: parsed.raw_text,
-      amount: parsed.amount,
-      category: parsed.category,
+      id,
+      raw_text: rawText,
+      amount: parsed.amount ?? ledger?.amount,
+      category: parsed.category ?? ledger?.category,
     });
-  } else {
+    insertToken(`记账#${id}`, expanded, `/ledger/${id}`);
+    toast.success("已加入上下文：记账");
+    return;
+  }
+  {
     const text = dt.getData("text/plain");
     if (text && text.trim()) {
       // 作为临时笔记上下文
       contextItems.value.push({ type: "note", id: Date.now(), body_md: text.trim() });
+      insertToken("文本", text.trim());
+      toast.success("已加入上下文：文本");
     } else {
       error.value = "无法识别拖拽内容";
+      toast.error("无法识别拖拽内容");
     }
   }
 };
@@ -343,7 +799,8 @@ const startNewConversation = () => {
   }
   messages.value = [];
   contextItems.value = [];
-  draft.value = "";
+  if (editorEl.value) editorEl.value.innerHTML = "";
+  draftText.value = "";
   error.value = null;
   showHistory.value = false;
   showHistoryMenu.value = false;
@@ -354,7 +811,39 @@ const startNewConversation = () => {
  * 聚焦输入框，便于开始输入问题。
  */
 const focusInput = () => {
-  inputEl.value?.focus();
+  editorEl.value?.focus();
+};
+
+/**
+ * 根据 ID 附加笔记到上下文。
+ */
+const attachNote = (id: number) => {
+  const note = data.notes.find(n => n.id === id);
+  if (!note) return;
+  const expanded = `【笔记#${note.id}】\n${note.body_md || ""}`.trim();
+  contextItems.value.push({ type: "note", id: note.id, body_md: note.body_md || "" });
+  insertToken(`笔记#${note.id}`, expanded, `/note/${note.id}`);
+  showAttachMenu.value = false;
+  newConversationHint.value = false;
+};
+
+/**
+ * 根据 ID 附加记账到上下文。
+ */
+const attachLedger = (id: number) => {
+  const ledger = data.ledgers.find(l => l.id === id);
+  if (!ledger) return;
+  const expanded = `【记账#${ledger.id}】${ledger.raw_text || ""}${ledger.amount ? ` 金额:${ledger.amount}` : ""}${ledger.category ? ` 分类:${ledger.category}` : ""}`;
+  contextItems.value.push({
+    type: "ledger",
+    id: ledger.id,
+    raw_text: ledger.raw_text,
+    amount: ledger.amount,
+    category: ledger.category,
+  });
+  insertToken(`记账#${ledger.id}`, expanded, `/ledger/${ledger.id}`);
+  showAttachMenu.value = false;
+  newConversationHint.value = false;
 };
 
 /**
@@ -380,6 +869,12 @@ const initHistory = () => {
 
 onMounted(() => {
   initHistory();
+  if (data.notes.length === 0) {
+    data.fetchNotes();
+  }
+  if (data.ledgers.length === 0) {
+    data.fetchLedgers(undefined, 1, 20);
+  }
 });
 
 watch(() => props.visible, (v) => {
@@ -389,9 +884,13 @@ watch(() => props.visible, (v) => {
   loading.value = false;
 });
 
-watch(draft, (val) => {
-  if (val.trim()) newConversationHint.value = false;
-});
+/**
+ * 发送预设文本并立即发起对话。
+ */
+const sendWithText = (text: string) => {
+  setEditorText(text);
+  send();
+};
 
 /**
  * 当前上下文摘要字符串。
@@ -416,6 +915,38 @@ const contextSummary = computed(() => {
 
 .input {
   @apply w-full rounded-xl border border-border bg-surface px-4 py-3 text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/40 transition-shadow shadow-sm;
+}
+.draft-editor {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.draft-editor:empty:before {
+  content: attr(data-placeholder);
+  color: rgba(120, 120, 120, 0.8);
+}
+.draft-editor :deep(.draft-token) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(90, 170, 255, 0.6);
+  background: rgba(90, 170, 255, 0.12);
+  color: rgb(var(--c-text));
+  font-size: 12px;
+  line-height: 1.2;
+  margin: 0 4px 2px 0;
+  text-decoration: none;
+  cursor: pointer;
+}
+.draft-editor :deep(.draft-token::before) {
+  content: "🔗";
+  font-size: 12px;
+  opacity: 0.75;
+}
+.draft-editor :deep(.draft-token:hover) {
+  border-color: rgba(90, 170, 255, 0.9);
+  background: rgba(90, 170, 255, 0.2);
 }
 .btn {
   @apply px-4 py-2 rounded-xl font-semibold transition-all duration-150;
@@ -483,6 +1014,10 @@ const contextSummary = computed(() => {
   border-color: rgb(255, 90, 180);
   box-shadow: 0 0 12px rgba(255, 90, 180, 0.28);
   animation: ai-soft-pulse 3.2s ease-in-out infinite;
+}
+.ai-dragover {
+  border-color: rgba(90, 170, 255, 0.9);
+  box-shadow: 0 0 0 2px rgba(90, 170, 255, 0.2), 0 10px 24px rgba(90, 170, 255, 0.15);
 }
 /* 品牌头部与芯片 */
 .brand-header {

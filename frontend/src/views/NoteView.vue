@@ -319,8 +319,15 @@ const shareLinkFallback = computed(() => {
 const shareLink = computed(() => shareLinkOverride.value || shareLinkFallback.value);
 
 const handleBack = () => {
-  if (isShareView.value) router.push("/");
-  else  router.back();
+  if (isShareView.value) {
+    router.push({ name: "home" });
+    return;
+  }
+  if (window.history.length > 1) {
+    router.back();
+    return;
+  }
+  router.push({ name: "home" });
 };
 
 // 格式化时间

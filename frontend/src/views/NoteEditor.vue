@@ -3,7 +3,7 @@
     <header class="w-full max-w-4xl md:max-w-7xl mx-auto px-4 pt-8 pb-4 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <button
-          @click="router.back()"
+          @click="handleBack"
           class="btn ghost flex items-center gap-2"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -76,6 +76,13 @@ const router = useRouter();
 const data = useDataStore();
 const toast = useToastStore();
 const theme = useThemeStore();
+const handleBack = () => {
+  if (window.history.length > 1) {
+    router.back();
+    return;
+  }
+  router.push({ name: "notes" });
+};
 const content = ref("");
 const saving = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);

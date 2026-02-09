@@ -3,7 +3,7 @@
     <header class="w-full max-w-4xl mx-auto px-4 pt-8 pb-4 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <button
-          @click="router.back()"
+          @click="handleBack"
           class="btn ghost flex items-center gap-2"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -37,7 +37,7 @@
           </div>
           
           <!-- Ledger 列表 -->
-        <div v-if="data.ledgers.length" class="space-y-4">
+          <div v-if="data.ledgers.length" class="space-y-4">
           <template v-for="group in groupedLedgers" :key="group.key">
             <!-- 日期分割线 -->
             <div class="flex items-center gap-4 my-6">
@@ -55,6 +55,9 @@
                   'opacity-60': ledger.status === 'pending' || ledger.status === 'processing',
                   'border-2 border-blue-300 border-dashed': ledger.status === 'pending' || ledger.status === 'processing'
                 }"
+                draggable="true"
+                @dragstart="handleLedgerDragStart($event, ledger)"
+                @dragend="handleDragEnd"
                 @click="handleLedgerClick(ledger.id)"
               >
                 <!-- Ledger 内容 -->
@@ -139,6 +142,7 @@ const data = useDataStore();
 const confirm = useConfirmStore();
 const toast = useToastStore();
 const loading = ref(false);
+const isDragging = ref(false);
 const currentPage = ref(1);
 const pageSize = 20;
 const selectedCategory = ref("");
@@ -192,6 +196,31 @@ const handleCategoryChange = async () => {
   await loadPage(1);
 };
 
+/**
+ * 处理记账卡片拖拽，写入自定义数据格式。
+ */
+const handleLedgerDragStart = (event: DragEvent, ledger: LedgerEntry) => {
+  if (!event.dataTransfer) return;
+  isDragging.value = true;
+  const payload = {
+    type: "ledger",
+    id: ledger.id,
+    raw_text: ledger.raw_text || "",
+    amount: ledger.amount ?? null,
+    category: ledger.category ?? null,
+  };
+  event.dataTransfer.setData("application/x-xmem", JSON.stringify(payload));
+  event.dataTransfer.setData("text/plain", ledger.raw_text || "");
+  event.dataTransfer.effectAllowed = "copy";
+};
+
+/**
+ * 处理拖拽结束，恢复点击行为。
+ */
+const handleDragEnd = () => {
+  isDragging.value = false;
+};
+
 // 按日期分组 ledger
 const groupedLedgers = computed(() => {
   const getTimeValue = (ledger: LedgerEntry) => {
@@ -239,8 +268,21 @@ const groupedLedgers = computed(() => {
 });
 
 const handleLedgerClick = (ledgerId: number) => {
+  if (isDragging.value) {
+    isDragging.value = false;
+    return;
+  }
   router.push({ name: "ledger-view", params: { ledgerId } });
 };
+
+const handleBack = () => {
+  if (window.history.length > 1) {
+    router.back();
+    return;
+  }
+  router.push({ name: "home" });
+};
+
 
 const handleEdit = (ledger: LedgerEntry) => {
   ledgerEditor.open(ledger);
@@ -311,6 +353,5 @@ onMounted(async () => {
 .btn.ghost {
   @apply bg-surface text-text border border-border hover:border-border/70;
 }
-
 </style>
 
