@@ -773,6 +773,7 @@ const attachNote = (id: number) => {
   const expanded = `【笔记#${note.id}】\n${note.body_md || ""}`.trim();
   contextItems.value.push({ type: "note", id: note.id, body_md: note.body_md || "" });
   insertToken(`笔记#${note.id}`, expanded, `/note/${note.id}`);
+  toast.success("已加入上下文：笔记");
   closeAttachPicker();
   newConversationHint.value = false;
 };
@@ -793,6 +794,7 @@ const attachLedger = (id: number) => {
     category: ledger.category,
   });
   insertToken(`记账#${ledger.id}`, expanded, `/ledger/${ledger.id}`);
+  toast.success("已加入上下文：记账");
   closeAttachPicker();
   newConversationHint.value = false;
 };
