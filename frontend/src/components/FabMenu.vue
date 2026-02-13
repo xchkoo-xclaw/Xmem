@@ -16,20 +16,21 @@
       aria-label="Xia 助手"
       @click="$emit('assistant')"
     >
-      <!-- Xia 品牌图形标识：左侧 X、i 的点、右侧 a 的环形 -->
-      <svg class="xia-logo" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+      <svg class="ai-icon" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
         <defs>
-          <linearGradient id="xiaGrad" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id="aiGrad" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stop-color="var(--xia-c1)" />
             <stop offset="100%" stop-color="var(--xia-c2)" />
           </linearGradient>
         </defs>
-        <!-- X -->
-        <path d="M3.8 6.2 L8.6 11 M8.6 6.2 L3.8 11" stroke="url(#xiaGrad)" stroke-width="2" stroke-linecap="round" />
-        <!-- i 的点 -->
-        <circle cx="12.4" cy="5.4" r="1.2" fill="url(#xiaGrad)" />
-        <!-- a 的环形与轻微尾巴 -->
-        <path d="M12 9.5a3.8 3.8 0 1 0 7.6 0c0-1.7-1.1-3.2-2.6-3.7" fill="none" stroke="url(#xiaGrad)" stroke-width="2" stroke-linecap="round" />
+        <g fill="none" stroke="url(#aiGrad)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="6.5" y="6.5" width="11" height="11" rx="2.2" />
+          <path d="M4 9v-2M4 17v-2M20 9v-2M20 17v-2M9 4h2M13 4h2M9 20h2M13 20h2" />
+        </g>
+        <path
+          d="M12 8.4l1.1 2.1 2.4.3-1.8 1.5.5 2.3-2.2-1.2-2.2 1.2.5-2.3-1.8-1.5 2.4-.3z"
+          fill="url(#aiGrad)"
+        />
       </svg>
     </button>
     <!-- 主题切换按钮（始终显示，位置会根据菜单是否打开而改变） -->
@@ -227,13 +228,14 @@ onUnmounted(() => {
   --xia-c1: #5b9dff;
   --xia-c2: #ff82c8;
 }
+.ai-icon {
+  display: block;
+  filter: drop-shadow(0 6px 10px rgba(91, 157, 255, 0.25));
+}
 .ai-main:hover {
   border-color: var(--fab-border-hover);
   box-shadow: var(--fab-shadow-hover);
   @apply ring-4 ring-accent/20;
-}
-.xia-logo {
-  display: block;
 }
 :global(.dark) .ai-main {
   --xia-c1: #9fc2ff;
