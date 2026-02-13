@@ -1,6 +1,6 @@
 [project]
 name = "xmem-backend"
-version = "1.4.0"
+version = "1.4.1"
 description = "FastAPI + PostgreSQL backend for Xmem"
 requires-python = ">=3.10"
 dependencies = [
