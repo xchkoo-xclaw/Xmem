@@ -37,16 +37,19 @@
             <div
               v-for="cell in calendarCells"
               :key="cell.key"
-              class="min-h-[56px] rounded-lg border border-border/60 p-2 text-xs"
-              :class="cell.isCurrentMonth ? 'bg-surface2' : 'bg-transparent text-transparent border-transparent'"
+              class="rounded-lg border border-border/60 p-2 text-xs transition-colors"
+              :class="[
+                cell.isCurrentMonth ? getCalendarAmountClass(cell.amount) : 'bg-transparent text-transparent border-transparent',
+                isNarrowScreen ? 'min-h-[72px]' : 'min-h-[56px]'
+              ]"
             >
               <div class="flex items-center justify-between text-[11px]">
                 <span class="font-medium text-text" v-if="cell.isCurrentMonth">{{ cell.day }}</span>
                 <span v-else>0</span>
-                <span v-if="cell.isCurrentMonth && cell.count" class="text-muted">{{ cell.count }} 笔</span>
+                <span v-if="cell.isCurrentMonth && cell.count" class="text-muted hidden sm:inline">{{ cell.count }} 笔</span>
               </div>
-              <div v-if="cell.isCurrentMonth" class="mt-1 text-[11px] text-text">
-                ¥{{ cell.amount.toLocaleString() }}
+              <div v-if="cell.isCurrentMonth" class="mt-1 flex flex-col gap-1 text-[11px] text-text">
+                <span class="font-medium">{{ formatCalendarAmount(cell.amount) }}</span>
               </div>
             </div>
           </div>
@@ -777,6 +780,57 @@ const canShiftToNextSixMonths = computed(() => {
   if (!latestTrendEndMonth.value || !monthlyTrendEndMonth.value) return false;
   return monthlyTrendEndMonth.value !== latestTrendEndMonth.value;
 });
+
+/**
+ * 获取日历中单日最高金额。
+ */
+const calendarMaxAmount = computed(() => {
+  if (!calendarStats.value) return 0;
+  const amounts = calendarStats.value.daily_data.map(item => item.amount);
+  return amounts.length ? Math.max(...amounts) : 0;
+});
+
+/**
+ * 生成日历金额配色样式。
+ */
+const getCalendarAmountClass = (amount: number) => {
+  if (amount <= 0) return "bg-surface2";
+  const maxAmount = calendarMaxAmount.value;
+  if (maxAmount <= 0) {
+    return "bg-emerald-50/70 text-text dark:bg-emerald-950/35";
+  }
+  const threshold = maxAmount * 0.5;
+  if (amount < threshold) {
+    return "bg-emerald-100/80 text-text dark:bg-emerald-900/30";
+  }
+  return "bg-emerald-200/90 text-text dark:bg-emerald-800/40";
+};
+
+/**
+ * 格式化移动端金额显示。
+ */
+const formatShortAmount = (amount: number) => {
+  const absolute = Math.abs(amount);
+  if (absolute >= 10000) {
+    const value = (absolute / 10000).toFixed(1);
+    return `${value.replace(/\\.0$/, "")}万`;
+  }
+  if (absolute >= 1000) {
+    const value = (absolute / 1000).toFixed(1);
+    return `${value.replace(/\\.0$/, "")}k`;
+  }
+  return `${Math.round(absolute)}`;
+};
+
+/**
+ * 格式化日历金额展示。
+ */
+const formatCalendarAmount = (amount: number) => {
+  if (isNarrowScreen.value) {
+    return `¥${formatShortAmount(amount)}`;
+  }
+  return `¥${amount.toLocaleString()}`;
+};
 
 const calendarCells = computed(() => {
   if (!calendarStats.value || !calendarMonth.value) return [];
