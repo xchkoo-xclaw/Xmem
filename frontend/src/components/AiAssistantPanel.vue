@@ -122,26 +122,26 @@
       <div class="text-xs text-muted mb-2">
         {{ isDesktop ? "支持拖拽笔记或记账卡片到侧栏，自动作为上下文；Shift+Enter 换行，Enter 发送。" : "点击附件选择笔记或记账作为上下文；Shift+Enter 换行，Enter 发送。" }}
       </div>
-      <div class="flex items-end gap-3 relative">
-        <div
-          :ref="setEditorEl"
-          class="input input-pill flex-1 min-h-[64px] draft-editor"
-          contenteditable="true"
-          data-placeholder="请输入问题或消息..."
-          @input="handleEditorInput"
-          @keydown="handleEditorKeydown"
-          @paste="handlePaste"
-          @copy="handleCopy"
-          @cut="handleCut"
-        />
-        <div class="relative">
-          <button class="icon-btn" title="添加附件" @click="openAttachPicker">
+      <div class="input-area">
+        <div class="input-wrap">
+          <div
+            :ref="setEditorEl"
+            class="input input-pill flex-1 min-h-[64px] draft-editor"
+            contenteditable="true"
+            data-placeholder="请输入问题或消息..."
+            @input="handleEditorInput"
+            @keydown="handleEditorKeydown"
+            @paste="handlePaste"
+            @copy="handleCopy"
+            @cut="handleCut"
+          />
+          <button class="attach-btn" title="添加附件" @click="openAttachPicker">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21.44 11.05l-9.9 9.9a5.5 5.5 0 01-7.78-7.78l9.9-9.9a3.5 3.5 0 015 5l-9.2 9.2a1.5 1.5 0 11-2.12-2.12l8.5-8.5" />
             </svg>
           </button>
         </div>
-        <button class="btn btn-gradient px-4 py-2" :disabled="loading || !draftText.trim()" @click="send">
+        <button class="btn btn-gradient send-btn" :disabled="loading || !draftText.trim()" @click="send">
           {{ loading ? '生成中...' : '发送' }}
         </button>
       </div>
@@ -337,6 +337,21 @@ const updateAttachSort = (value: string) => {
 
 .input {
   @apply w-full rounded-xl border border-border bg-surface px-4 py-3 text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/40 transition-shadow shadow-sm;
+}
+.input-area {
+  @apply flex items-end gap-3;
+}
+.input-wrap {
+  @apply relative flex-1;
+}
+.input-pill {
+  padding-right: 3rem;
+}
+.attach-btn {
+  @apply absolute right-2.5 bottom-2.5 p-2 rounded-lg border border-border bg-surface2 text-text hover:border-accent/60 hover:bg-surface;
+}
+.send-btn {
+  @apply min-w-[76px] px-4 py-2;
 }
 .draft-editor {
   white-space: pre-wrap;
