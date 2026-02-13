@@ -329,7 +329,9 @@ const filteredAttachLedgers = computed(() => {
 /**
  * 获取附件搜索框占位文本。
  */
-const attachSearchPlaceholder = computed(() => "搜索笔记内容");
+const attachSearchPlaceholder = computed(() =>
+  attachPickerTab.value === "ledgers" ? "搜索记账内容/分类/商户" : "搜索笔记内容"
+);
 
 /**
  * 从节点中提取文本，可按需展开上下文 token。
@@ -720,7 +722,9 @@ const loadHistory = (index: number) => {
  */
 const saveHistory = () => {
   syncHistoryStorageKey();
-  const newItem = { messages: messages.value, context: contextItems.value };
+  const messagesSnapshot = messages.value.map((m) => ({ ...m }));
+  const contextSnapshot = contextItems.value.map((item) => ({ ...item }));
+  const newItem = { messages: messagesSnapshot, context: contextSnapshot };
   const storageKey = historyStorageKey.value;
   const raw = localStorage.getItem(storageKey);
   let list: typeof history.value = [];
