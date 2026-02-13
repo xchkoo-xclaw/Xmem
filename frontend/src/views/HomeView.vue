@@ -214,6 +214,9 @@
                 v-for="note in displayedNotes"
                 :key="note.id"
                 class="card relative group hover:shadow-float transition-all duration-200 cursor-pointer"
+                draggable="true"
+                @dragstart="handleNoteDragStart($event, note)"
+                @dragend="handleDragEnd"
                 @click="handleNoteClick(note.id)"
               >
                 <NoteCardContent
@@ -227,14 +230,14 @@
               <router-link
                 v-if="remainingNotesCount > 0"
                 :to="{ name: 'notes' }"
-                class="card relative group hover:shadow-lg transition-all duration-200 cursor-pointer flex items-center justify-center min-h-[200px] bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 hover:border-gray-400"
+                class="card card-ellipsis relative group hover:shadow-float transition-all duration-200 cursor-pointer flex items-center justify-center min-h-[200px] border-2 border-dashed"
               >
                 <div class="text-center">
-                  <div class="text-4xl font-light text-gray-400 mb-2">⋯</div>
-                  <div class="text-sm text-gray-600 font-medium">
+                  <div class="text-4xl font-light text-muted mb-2">⋯</div>
+                  <div class="text-sm text-muted font-medium">
                     还有 <span class="text-text font-semibold">{{ remainingNotesCount }}</span> 条笔记
                   </div>
-                  <div class="text-xs text-gray-500 mt-1">点击查看全部</div>
+                  <div class="text-xs text-muted mt-1">点击查看全部</div>
                 </div>
               </router-link>
             </div>
@@ -268,6 +271,9 @@
                     v-for="ledger in group.items"
                     :key="ledger.id"
                     class="card relative group hover:shadow-lg transition-all duration-200"
+                    draggable="true"
+                    @dragstart="handleLedgerDragStart($event, ledger)"
+                    @dragend="handleDragEnd"
                     :class="{ 
                       'opacity-60': ledger.status === 'pending' || ledger.status === 'processing',
                       'border-2 border-blue-300 border-dashed': ledger.status === 'pending' || ledger.status === 'processing'
@@ -359,7 +365,7 @@ import TodoList from "../components/TodoList.vue";
 import TodoInput from "../components/TodoInput.vue";
 import { useUserStore } from "../stores/user";
 import { useDataStore } from "../stores/data";
-import type { LedgerEntry, LedgerStatistics } from "../stores/data";
+import type { LedgerEntry, LedgerStatistics, Note } from "../stores/data";
 import { useToastStore } from "../stores/toast";
 import { useConfirmStore } from "../stores/confirm";
 import { usePreferencesStore } from "../stores/preferences";
@@ -381,6 +387,47 @@ const parseTabQuery = (value: unknown): "note" | "ledger" | null => {
   return null;
 };
 
+/**
+ * 处理笔记卡片拖拽，写入自定义数据格式。
+ */
+const handleNoteDragStart = (event: DragEvent, note: Note) => {
+  if (!event.dataTransfer) return;
+  isDragging.value = true;
+  const payload = {
+    type: "note",
+    id: note.id,
+    body_md: note.body_md || "",
+  };
+  event.dataTransfer.setData("application/x-xmem", JSON.stringify(payload));
+  event.dataTransfer.setData("text/plain", note.body_md || "");
+  event.dataTransfer.effectAllowed = "copy";
+};
+
+/**
+ * 处理记账卡片拖拽，写入自定义数据格式。
+ */
+const handleLedgerDragStart = (event: DragEvent, ledger: LedgerEntry) => {
+  if (!event.dataTransfer) return;
+  isDragging.value = true;
+  const payload = {
+    type: "ledger",
+    id: ledger.id,
+    raw_text: ledger.raw_text || "",
+    amount: ledger.amount ?? null,
+    category: ledger.category ?? null,
+  };
+  event.dataTransfer.setData("application/x-xmem", JSON.stringify(payload));
+  event.dataTransfer.setData("text/plain", ledger.raw_text || "");
+  event.dataTransfer.effectAllowed = "copy";
+};
+
+/**
+ * 处理拖拽结束，恢复点击行为。
+ */
+const handleDragEnd = () => {
+  isDragging.value = false;
+};
+
 const getTabFromRoute = () => {
   const raw = Array.isArray(route.query.tab) ? route.query.tab[0] : route.query.tab;
   return parseTabQuery(raw) ?? "note";
@@ -398,6 +445,7 @@ const currentTab = computed<"note" | "ledger">({
 });
 
 const inputText = ref("");
+const isDragging = ref(false);
 
 // 从 localStorage 加载快速输入内容
 const loadInputTextFromStorage = () => {
@@ -1059,6 +1107,10 @@ const scrollToSection = (type: "notes" | "ledger") => {
 
 // 处理笔记点击 - 跳转到查看笔记界面
 const handleNoteClick = (noteId: number) => {
+  if (isDragging.value) {
+    isDragging.value = false;
+    return;
+  }
   router.push({ name: 'note-view', params: { noteId } });
 };
 
@@ -1180,6 +1232,10 @@ const groupedLedgers = computed(() => {
 });
 
 const handleLedgerClick = (ledgerId: number) => {
+  if (isDragging.value) {
+    isDragging.value = false;
+    return;
+  }
   router.push({ name: 'ledger-view', params: { ledgerId } });
 };
 
@@ -1246,6 +1302,13 @@ const getGreeting = () => {
 }
 .card {
   @apply bg-surface p-4 rounded-xl shadow-card border border-border;
+}
+.card-ellipsis {
+  background-color: rgb(var(--c-surface));
+  border-color: rgb(var(--c-border));
+}
+.card-ellipsis:hover {
+  border-color: rgba(var(--c-border), 0.8);
 }
 .section-title {
   @apply text-sm font-semibold text-muted mb-2;

@@ -235,3 +235,34 @@ def generate_ledger_monthly_summary(ledger_text: str) -> str:
         stream=False,
     )
     return response.choices[0].message.content.strip()
+
+
+def generate_chat_response(messages: list[dict], context_text: str | None = None) -> str:
+    """
+    生成通用对话回复（支持可选上下文）。
+    Args:
+        messages: 对话消息列表，包含 role 与 content
+        context_text: 额外上下文文本，将作为 system 或 user 前缀提示
+    Returns:
+        模型回复文本
+    """
+    client = _get_client()
+    sys_prompt = (
+        "你是智能助手，回答需简洁准确，使用中文。若提供了上下文，请充分利用上下文信息回答。"
+    )
+    msgs: list[dict] = [{"role": "system", "content": sys_prompt}]
+    if context_text and context_text.strip():
+        msgs.append({"role": "system", "content": f"以下是用户提供的上下文，请在回答时参考：\n{context_text.strip()}"})
+    # 追加用户消息序列
+    for m in messages:
+        role = m.get("role") or "user"
+        content = str(m.get("content") or "").strip()
+        if not content:
+            continue
+        msgs.append({"role": role, "content": content})
+    response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=msgs,
+        stream=False,
+    )
+    return response.choices[0].message.content.strip()

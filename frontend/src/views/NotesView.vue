@@ -84,6 +84,9 @@
             v-for="note in data.notes"
             :key="note.id"
             class="card relative group hover:shadow-float transition-all duration-200 cursor-pointer"
+            draggable="true"
+            @dragstart="handleNoteDragStart($event, note)"
+            @dragend="handleDragEnd"
             @click="handleNoteClick(note.id)"
           >
             <NoteCardContent
@@ -108,6 +111,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { useDataStore } from "../stores/data";
+import type { Note } from "../stores/data";
 import { useToastStore } from "../stores/toast";
 import { usePreferencesStore } from "../stores/preferences";
 import NoteCardContent from "../components/NoteCardContent.vue";
@@ -121,10 +125,38 @@ const toast = useToastStore();
 const preferences = usePreferencesStore();
 const searchQuery = ref("");
 const isSearching = ref(false);
+const isDragging = ref(false);
 
 // 处理笔记点击
 const handleNoteClick = (noteId: number) => {
+  if (isDragging.value) {
+    isDragging.value = false;
+    return;
+  }
   router.push({ name: 'note-view', params: { noteId } });
+};
+
+/**
+ * 处理笔记卡片拖拽，写入自定义数据格式。
+ */
+const handleNoteDragStart = (event: DragEvent, note: Note) => {
+  if (!event.dataTransfer) return;
+  isDragging.value = true;
+  const payload = {
+    type: "note",
+    id: note.id,
+    body_md: note.body_md || "",
+  };
+  event.dataTransfer.setData("application/x-xmem", JSON.stringify(payload));
+  event.dataTransfer.setData("text/plain", note.body_md || "");
+  event.dataTransfer.effectAllowed = "copy";
+};
+
+/**
+ * 处理拖拽结束，恢复点击行为。
+ */
+const handleDragEnd = () => {
+  isDragging.value = false;
 };
 
 // 搜索处理（防抖）

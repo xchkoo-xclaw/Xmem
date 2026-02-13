@@ -318,9 +318,18 @@ const shareLinkFallback = computed(() => {
 
 const shareLink = computed(() => shareLinkOverride.value || shareLinkFallback.value);
 
+/**
+ * 处理返回操作，分享视图直接回到首页，其他场景优先回退。
+ */
 const handleBack = () => {
-  if (isShareView.value) router.push("/");
-  else  router.back();
+  if (isShareView.value) {
+    router.push({ name: "home" });
+    return;
+  }
+  router.back();
+  if (window.history.length <= 1) {
+    router.push({ name: "home" });
+  }
 };
 
 // 格式化时间

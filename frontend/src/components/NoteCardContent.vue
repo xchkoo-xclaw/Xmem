@@ -175,6 +175,7 @@ const formatTime = (timeStr: string) => {
     minute: '2-digit'
   });
 };
+
 </script>
 
 <style scoped>

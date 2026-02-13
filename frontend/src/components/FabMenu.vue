@@ -8,6 +8,31 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
       </svg>
     </button>
+    <!-- AI 助手入口（与刷新、主题同层级，低调但可识别） -->
+    <button
+      v-if="!isMobile || open"
+      class="fab-main ai-main"
+      title="Xia 助手"
+      aria-label="Xia 助手"
+      @click="$emit('assistant')"
+    >
+      <svg class="ai-icon" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+        <defs>
+          <linearGradient id="aiGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="var(--xia-c1)" />
+            <stop offset="100%" stop-color="var(--xia-c2)" />
+          </linearGradient>
+        </defs>
+        <g fill="none" stroke="url(#aiGrad)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="6.5" y="6.5" width="11" height="11" rx="2.2" />
+          <path d="M4 9v-2M4 17v-2M20 9v-2M20 17v-2M9 4h2M13 4h2M9 20h2M13 20h2" />
+        </g>
+        <path
+          d="M12 8.4l1.1 2.1 2.4.3-1.8 1.5.5 2.3-2.2-1.2-2.2 1.2.5-2.3-1.8-1.5 2.4-.3z"
+          fill="url(#aiGrad)"
+        />
+      </svg>
+    </button>
     <!-- 主题切换按钮（始终显示，位置会根据菜单是否打开而改变） -->
     <button
       v-if="!isMobile || open"
@@ -115,6 +140,7 @@ import { useThemeStore } from "../stores/theme";
 
 defineEmits<{
   home: [];
+  assistant: [];
   notes: [];
   ledgers: [];
   todos: [];
@@ -182,10 +208,56 @@ onUnmounted(() => {
   @apply fixed inset-0 z-40;
 }
 .fab-main {
-  @apply w-14 h-14 rounded-full bg-accent text-on-accent text-2xl shadow-float flex items-center justify-center transition-transform duration-200 active:scale-95;
+  @apply w-14 h-14 rounded-full text-2xl flex items-center justify-center transition-transform duration-200 active:scale-95 hover:ring-4 hover:ring-accent/20;
 }
 .fab-sub {
-  @apply px-3 py-2 rounded-full bg-surface shadow-float text-sm text-text border border-border hover:-translate-y-1 transition-all duration-200;
+  @apply px-3 py-2 rounded-full text-sm transition-all duration-200;
+}
+:is(.fab-main, .fab-sub) {
+  background-color: var(--fab-bg);
+  color: var(--fab-text);
+  border: 1px solid var(--fab-border);
+  box-shadow: var(--fab-shadow);
+}
+.fab-sub:hover {
+  transform: translateY(-4px);
+}
+.ai-main {
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  --xia-c1: #5b9dff;
+  --xia-c2: #ff82c8;
+}
+.ai-icon {
+  display: block;
+  filter: drop-shadow(0 6px 10px rgba(91, 157, 255, 0.25));
+}
+.ai-main:hover {
+  border-color: var(--fab-border-hover);
+  box-shadow: var(--fab-shadow-hover);
+  @apply ring-4 ring-accent/20;
+}
+:global(.dark) .ai-main {
+  --xia-c1: #9fc2ff;
+  --xia-c2: #ffaddb;
+  border-color: rgba(160, 200, 255, 0.30);
+  box-shadow: 0 8px 18px rgba(160, 200, 255, 0.12);
+}
+:global(html[data-theme="light"]) .fab-wrapper {
+  --fab-bg: rgb(255, 255, 255);
+  --fab-text: rgb(31, 41, 55);
+  --fab-border: rgba(90, 170, 255, 0.18);
+  --fab-border-hover: rgba(90, 170, 255, 0.32);
+  --fab-shadow: 0 6px 14px rgba(90, 170, 255, 0.10);
+  --fab-shadow-hover: 0 10px 20px rgba(90, 170, 255, 0.14);
+}
+:global(html[data-theme="dark"]) .fab-wrapper {
+  --fab-bg: rgb(17, 24, 39);
+  --fab-text: rgb(255, 255, 255);
+  --fab-border: rgba(160, 200, 255, 0.30);
+  --fab-border-hover: rgba(160, 200, 255, 0.42);
+  --fab-shadow: 0 8px 18px rgba(160, 200, 255, 0.12);
+  --fab-shadow-hover: 0 10px 22px rgba(160, 200, 255, 0.16);
 }
 .fab-collapsed {
   right: -28px;
