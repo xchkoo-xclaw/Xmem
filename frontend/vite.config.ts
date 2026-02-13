@@ -31,7 +31,7 @@ const resolveFrontendVersion = () => {
 
 export default defineConfig({
   plugins: [vue()],
-  base: "./",
+  base: process.env.VITE_BASE && process.env.VITE_BASE.trim() ? process.env.VITE_BASE.trim() : "/",
   define: {
     __APP_VERSION__: JSON.stringify(resolveFrontendVersion()),
   },

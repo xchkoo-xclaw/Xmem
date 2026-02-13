@@ -7,7 +7,7 @@
     "dev:no-devtools": "cross-env VITE_DEV_SERVER=http://localhost:5173 OPEN_DEVTOOLS=false electron .",
     "start": "electron .",
     "gen:icon": "node --input-type=module -e \"import fs from 'node:fs'; import pngToIco from 'png-to-ico'; fs.mkdirSync('build', { recursive: true }); const buf = await pngToIco('../frontend/public/favicon.png'); fs.writeFileSync('build/icon.ico', buf);\"",
-    "build:frontend": "npm --prefix ../frontend install && cross-env VITE_API_URL=https://xmem.top/api npm --prefix ../frontend run build",
+    "build:frontend": "npm --prefix ../frontend install && cross-env VITE_API_URL=https://xmem.top/api VITE_BASE=./ npm --prefix ../frontend run build",
     "pack": "npm run gen:icon && npm run build:frontend && electron-builder --dir",
     "dist": "npm run gen:icon && npm run build:frontend && electron-builder"
   },
