@@ -275,12 +275,14 @@ const handleLedgerClick = (ledgerId: number) => {
   router.push({ name: "ledger-view", params: { ledgerId } });
 };
 
+/**
+ * 处理返回操作，优先回退，必要时回到首页。
+ */
 const handleBack = () => {
-  if (window.history.length > 1) {
-    router.back();
-    return;
+  router.back();
+  if (window.history.length <= 1) {
+    router.push({ name: "home" });
   }
-  router.push({ name: "home" });
 };
 
 
@@ -335,8 +337,8 @@ const handleStatisticsClick = () => {
 };
 
 // 组件挂载时加载第一页
-onMounted(async () => {
-  await loadPage(1);
+onMounted(() => {
+  loadPage(1);
 });
 </script>
 

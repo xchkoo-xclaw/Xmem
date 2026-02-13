@@ -58,12 +58,14 @@ const data = useDataStore();
 const highlightTodoId = ref<number | null>(null);
 const highlightTimer = ref<number | null>(null);
 
+/**
+ * 处理返回操作，优先返回上一页，必要时回到首页。
+ */
 const handleBack = () => {
-  if (window.history.length > 1) {
-    router.back();
-    return;
+  router.back();
+  if (window.history.length <= 1) {
+    router.push({ name: "home" });
   }
-  router.push({ name: "home" });
 };
 
 // 排序后的待办列表（按置顶优先，然后按创建时间倒序，最新的在上面）
