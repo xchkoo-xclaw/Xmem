@@ -1,204 +1,208 @@
 # Xmem
 
-一个现代化的个人记账和待办事项管理应用，支持笔记记录、智能记账和任务管理。
+一个AI赋能的前后端分离的个人记账、笔记与待办管理应用。
 
 ## ✨ 功能特性
 
-- 📝 **笔记管理** - 快速记录和管理个人笔记，支持导出为csv文件和markdown文件，ai智能总结
-- 💰 **智能记账** - 支持自然语言输入，AI 自动识别金额、分类和商户信息
-- ✅ **待办事项** - 简洁的任务管理功能，支持任务组，ai自动转换待办
-- 🔐 **用户认证** - 安全的用户注册和登录系统
-- 🖥️ **多端支持** - Web 应用和 Electron 桌面应用
-- 🐳 **效率部署** - 使用 Docker Compose 一键部署，github action自动CICD
+- 📝 **笔记与知识管理**：Markdown 笔记、图片/附件管理、标签与置顶、分享与权限控制
+- 🧠 **AI 助手**：笔记智能摘要、从笔记提取待办事项、对话式助手
+- 💰 **智能记账**：文本/图片输入，OCR 识别与 LLM 分类，支持多币种换算与统计汇总
+- ✅ **待办管理**：任务组与子任务、进度与状态流转、AI 生成待办
+- 📦 **导出能力**：笔记 CSV/Markdown 打包导出，带校验报告
+- 🔐 **用户认证**：注册/登录、JWT 鉴权、登录审计
+- 🖥️ **多端使用**：Web 与 Electron 桌面应用
+- 🐳 **一键部署**：Docker Compose + Nginx 反向代理 + 证书续期
 
-## 🛠️ 技术栈
+## 🛠️ 技术选型
 
-### 技术选型
-#### 后端:
-- **FastAPI**
-- **PostgreSQL**
-- **SQLAlchemy**
-- **Alembic**
+### 前端
+- **Vue 3** / **TypeScript** / **Vite**
+- **Pinia** 状态管理、**Vue Router** 路由
+- **Tailwind CSS** 与自定义主题
+- **vue-echarts** 数据统计图表
+- **md-editor-v3** Markdown 编辑与渲染
+- **Axios** 请求封装、**driver.js** 引导流程
 
-#### 前端:
-- **Vue 3**
-- **TypeScript**
-- **Vite**
-- **Tailwind CSS**
-- **Pinia**
-- **Axios**
+### 后端
+- **FastAPI** + **Uvicorn**
+- **PostgreSQL** + **SQLAlchemy**
+- **Alembic** 数据库迁移
+- **Celery** 异步任务 + **Redis** 消息队列
+- **Tesseract OCR** 图片识别
+- **Pydantic** 配置与数据校验
 
-### 桌面应用
-- **Electron** - 跨平台桌面应用框架
-
-### 部署
-- **Docker Compose** - 多容器编排
-- **Github Action** - 自动测试部署
+### 部署与运维
+- **Docker Compose** 多容器编排
+- **Nginx** 反向代理
+- **Certbot** SSL 证书续期
+- **GitHub Actions** CI/CD
 
 ## 📁 项目结构
 
 ```
 Xmem/
-├── backend/              # 后端服务
+├── backend/                 # FastAPI 后端
 │   ├── app/
-│   │   ├── routers/      # API 路由
-│   │   │   ├── auth.py   # 认证路由
-│   │   │   ├── notes.py  # 笔记路由
-│   │   │   ├── ledger.py # 记账路由
-│   │   │   └── todos.py  # 待办路由
-│   │   ├── services/     # 业务逻辑
-│   │   │   └── ledger_ai.py  # AI 分析服务
-│   │   ├── models.py     # 数据库模型
-│   │   ├── schemas.py    # Pydantic 模式
-│   │   ├── db.py         # 数据库配置
-│   │   ├── auth.py       # 认证工具
-│   │   └── main.py       # FastAPI 应用入口
-│   ├── Dockerfile
-│   └── pyproject.toml    # Python 项目配置
-├── frontend/             # 前端应用
+│   │   ├── routers/         # API 路由（auth/notes/ledger/todos/ai/exports）
+│   │   ├── services/        # 业务逻辑（AI、OCR、导出）
+│   │   ├── tasks/           # Celery 任务
+│   │   ├── utils/           # 通用工具
+│   │   └── main.py          # 应用入口
+│   ├── alembic/             # 迁移脚本
+│   ├── test/                # pytest 测试
+│   └── Dockerfile
+├── frontend/                # Vue3 前端
 │   ├── src/
-│   │   ├── components/   # Vue 组件
-│   │   ├── stores/       # Pinia 状态管理
-│   │   ├── api/          # API 客户端
-│   │   └── utils/        # 工具函数
-│   ├── Dockerfile
-│   └── package.json
-├── electron/             # Electron 桌面应用
-│   ├── main.js
-│   ├── preload.js
-│   └── package.json
-└── docker-compose.yml    # Docker Compose 配置
+│   │   ├── components/      # 业务组件
+│   │   ├── views/           # 页面
+│   │   ├── stores/          # Pinia
+│   │   ├── api/             # API 客户端
+│   │   └── utils/           # 前端工具
+│   ├── tests/               # vitest 测试
+│   └── Dockerfile
+├── electron/                # Electron 桌面端
+├── database/                # PostgreSQL Dockerfile
+├── redis/                   # Redis Dockerfile
+├── ssl/                     # 证书目录（由 certbot 挂载）
+├── .github/workflows/       # CI/CD
+├── docker-compose.yml       # 服务编排
+├── DOCKER_DEPLOY.md         # 部署详细说明
+└── HTTPS_MANUAL_SETUP.md    # HTTPS 手动初始化步骤
 ```
 
-## 🚀 快速开始
+## 🚀 生产环境使用 Docker 部署
 
-### 前置要求
+详细流程参见 [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md) 与 [HTTPS_MANUAL_SETUP.md](HTTPS_MANUAL_SETUP.md)。
 
-- Docker 和 Docker Compose
-- 或本地安装：
-  - Python 3.10+
-  - Node.js 18+
-  - PostgreSQL 16+
+### 1. 配置环境变量
 
-### 使用 Docker Compose（推荐）
+在项目根目录创建 `.env`：
 
-1. 克隆仓库
+```env
+# 数据库
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=xmem
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/xmem
+
+# 鉴权
+JWT_SECRET=please-change-in-production
+
+# Redis
+REDIS_URL=redis://redis:6379/0
+
+# OCR / LLM（按需）
+OCR_PROVIDER=local
+TESSERACT_CMD=/usr/bin/tesseract
+LLM_PROVIDER=
+LLM_API_URL=
+LLM_API_KEY=
+
+# 前端
+VITE_API_URL=/api
+```
+
+### 2. 启动服务
+
 ```bash
-git clone <repository-url>
-cd Xmem
+docker-compose up -d --build
 ```
 
-2. 配置根目录下.env文件
+### 3. 访问入口
 
-3. 启动所有服务
-```bash
-docker-compose up -d
-```
-
-4. 访问应用
 - 前端：http://localhost
-- 后端 API：http://localhost/api/
-- API 文档：http://localhost/docs
+- API：通过 `/api/` 反向代理访问
+- API 文档：如需直连，放开后端端口映射后访问 `http://localhost:8000/docs`
 
-### 本地开发
+## 🧑‍💻 本地开发
 
-#### 后端开发
+### 后端
 
-1. 安装依赖（使用 uv）
 ```bash
 cd backend
 uv sync
 ```
 
-2. 配置环境变量
-创建 `.env` 文件：
+创建 `backend/.env`（示例）：
+
 ```env
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/xmem
-SECRET_KEY=your-secret-key-here
+JWT_SECRET=your-secret-key
+REDIS_URL=redis://localhost:6379/0
 ```
 
-3. 启动数据库
+启动依赖服务：
+
 ```bash
-docker-compose up -d db
+docker-compose up -d db redis
 ```
 
-4. 运行后端服务
+运行后端：
+
 ```bash
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-#### 前端开发
+运行 Celery Worker（需要时）：
 
-1. 安装依赖
+```bash
+uv run celery -A app.celery_app:celery_app worker --loglevel=info --pool=gevent --concurrency=20
+```
+
+### 前端
+
 ```bash
 cd frontend
 npm install
 ```
 
-2. 配置环境变量
-创建 `.env` 文件：
+创建 `frontend/.env`：
+
 ```env
 VITE_API_URL=http://localhost:8000
 ```
 
-3. 启动开发服务器
+运行前端：
+
 ```bash
 npm run dev
 ```
 
-#### Electron 桌面应用
+### Electron
 
-1. 安装依赖
 ```bash
 cd electron
 npm install
-```
-
-2. 开发模式运行
-```bash
 npm run dev
 ```
 
-3. 生产模式运行
-```bash
-npm start
-```
+## 🧪 测试
 
-## 🧪 开发指南
-
-### 数据库迁移
-
-使用 Alembic 进行数据库迁移：
+### 后端（pytest）
 
 ```bash
 cd backend
-uv run alembic revision --autogenerate -m "描述"
-uv run alembic upgrade head
+uv run pytest
 ```
 
-### 代码规范
+### 前端（vitest）
 
-- 后端：遵循 PEP 8 Python 代码规范
-- 前端：使用 TypeScript 严格模式，遵循 Vue 3 最佳实践
-
-## 🚢 部署
-
-### 生产环境部署
-
-1. 修改 `docker-compose.yml` 中的环境变量
-2. 构建并启动服务：
 ```bash
-docker-compose up -d --build
+cd frontend
+npm run test:run
 ```
 
-3. 查看日志：
-```bash
-docker-compose logs -f
-```
+## ✅ 代码规范
+
+- 前端：使用 TypeScript 严格模式，遵循 Vue 3 最佳实践。
+  - 代码规范检查：`npm run lint`
+  - typescript类型检查：`node .\node_modules\typescript\bin\tsc -p tsconfig.json --noEmit`
+- 后端：遵循 PEP 8 及项目现有格式与风格约定。
+  - 静态代码检查 `uv run ruff check .`
 
 ## 🤝 贡献
 
-欢迎提交 Issue 和 Pull Request！
+欢迎提交 Issue 与 Pull Request。请保证测试通过并遵循现有代码风格。
 
 ## 📄 许可证
 
@@ -207,5 +211,3 @@ docker-compose logs -f
 ## 👤 作者
 
 Copyright (c) 2025 Xchkoo
-
----
