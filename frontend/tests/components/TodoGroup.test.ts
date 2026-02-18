@@ -24,8 +24,12 @@ const createTodo = (overrides: Partial<Todo> = {}): Todo => {
  */
 const getTextInputs = (wrapper: any) => {
   return wrapper
-    .findAll("input")
-    .filter((i: any) => (i.element as HTMLInputElement).type !== "checkbox");
+    .findAll("input, textarea")
+    .filter((i: any) => {
+      const el = i.element as HTMLInputElement | HTMLTextAreaElement;
+      if (el.tagName.toLowerCase() === "textarea") return true;
+      return (el as HTMLInputElement).type !== "checkbox";
+    });
 };
 
 describe("TodoGroup", () => {

@@ -27,6 +27,25 @@ const DummyHome = defineComponent({
 });
 
 /**
+ * 预置引导相关 DOM 元素，避免等待逻辑悬挂。
+ */
+const seedOnboardingElements = () => {
+  document.body.innerHTML = `
+    <div data-onboarding="quick-input"></div>
+    <div data-onboarding="notes-search"></div>
+    <div data-onboarding="notes-export"></div>
+    <div data-onboarding="todo-panel"></div>
+    <div data-onboarding="ledger-quick-input-anchor"></div>
+    <div data-onboarding="ledger-category-filter"></div>
+    <div data-onboarding="statistics-overview"></div>
+    <div data-onboarding="ledger-note-generator"></div>
+    <div data-onboarding="fab-menu"></div>
+    <button data-onboarding="tab-note"></button>
+    <button data-onboarding="tab-ledger"></button>
+  `;
+};
+
+/**
  * 创建测试路由并提供引导入口元素。
  */
 const createTestRouter = () =>
@@ -39,17 +58,20 @@ const createTestRouter = () =>
  * 挂载 App 并等待引导配置生成。
  */
 const mountAppWithOnboarding = async () => {
-  setActivePinia(createPinia());
+  const pinia = createPinia();
+  setActivePinia(pinia);
   const user = useUserStore();
-  localStorage.setItem("token", "test-token");
+  user.token = "";
+  localStorage.removeItem("token");
+  seedOnboardingElements();
 
   const router = createTestRouter();
-  await router.push("/");
+  await router.push({ path: "/", query: { tab: "note" } });
   await router.isReady();
 
   const wrapper = mount(App, {
     global: {
-      plugins: [router],
+      plugins: [router, pinia],
       stubs: {
         FabMenu: true,
         Settings: true,
@@ -64,9 +86,20 @@ const mountAppWithOnboarding = async () => {
 
   await nextTick();
   user.token = "test-token";
+  localStorage.setItem("token", "test-token");
   await nextTick();
   await nextTick();
   return { wrapper, router };
+};
+
+/**
+ * 等待引导配置生成，避免异步导航影响断言。
+ */
+const waitForOnboardingConfig = async (timeoutMs: number = 1200) => {
+  const startedAt = Date.now();
+  while (!capturedConfig && Date.now() - startedAt < timeoutMs) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
 };
 
 describe("onboarding config", () => {
@@ -78,6 +111,7 @@ describe("onboarding config", () => {
 
   it("包含导出按钮步骤并更新文案", async () => {
     const { wrapper } = await mountAppWithOnboarding();
+    await waitForOnboardingConfig();
 
     expect(capturedConfig).toBeTruthy();
     const steps = capturedConfig?.steps ?? [];
@@ -94,6 +128,7 @@ describe("onboarding config", () => {
 
   it("记账快速输入步骤使用完整输入框元素", async () => {
     const { wrapper } = await mountAppWithOnboarding();
+    await waitForOnboardingConfig();
 
     expect(capturedConfig).toBeTruthy();
     const steps = capturedConfig?.steps ?? [];

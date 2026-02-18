@@ -23,8 +23,12 @@ const createTodo = (overrides: Partial<Todo> = {}): Todo => {
  * 获取 TodoItem 内用于编辑标题的输入框（排除复选框）。
  */
 const getTitleInput = (wrapper: any) => {
-  const inputs = wrapper.findAll("input");
-  const titleInput = inputs.find((i: any) => (i.element as HTMLInputElement).type !== "checkbox");
+  const inputs = wrapper.findAll("input, textarea");
+  const titleInput = inputs.find((i: any) => {
+    const el = i.element as HTMLInputElement | HTMLTextAreaElement;
+    if (el.tagName.toLowerCase() === "textarea") return true;
+    return (el as HTMLInputElement).type !== "checkbox";
+  });
   if (!titleInput) {
     throw new Error(`未找到标题输入框，当前 inputs 数量: ${inputs.length}`);
   }
