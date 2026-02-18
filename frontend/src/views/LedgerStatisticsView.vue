@@ -19,7 +19,7 @@
       <div v-if="loading" class="text-center py-12">
         <p class="text-muted">加载中...</p>
       </div>
-      <div v-else-if="hasStatistics" class="space-y-6">
+      <div v-else-if="hasStatistics" class="space-y-6" data-onboarding="statistics-overview">
         <div id="monthly-calendar" class="bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
           <h2 class="text-lg font-bold text-text mb-2">月度日历</h2>
           <div class="flex flex-wrap items-center justify-between gap-3 mb-4">

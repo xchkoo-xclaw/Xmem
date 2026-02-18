@@ -25,7 +25,7 @@
         
         <div class="bg-surface border border-border rounded-3xl shadow-card p-4 md:p-6 lg:p-8 mx-auto">
           <!-- 筛选栏 -->
-          <div class="mb-6 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          <div class="mb-6 flex flex-col sm:flex-row gap-3 items-start sm:items-center" data-onboarding="ledger-category-filter">
             <label class="text-sm font-medium text-text whitespace-nowrap">分类筛选：</label>
             <div class="flex-1 max-w-xs">
               <CustomSelect
@@ -322,7 +322,6 @@ const loadPage = async (page: number) => {
     currentPage.value = page;
     const category = selectedCategory.value || undefined;
     const result = await data.fetchLedgers(category, page, pageSize);
-    console.log("加载记账数据:", result); // 调试用
   } catch (error: any) {
     console.error("加载记账数据失败:", error); // 调试用
     toast.error(error.response?.data?.detail || "加载失败");

@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <div v-if="open && isMobile" class="fab-overlay" @click="closeMenu"></div>
-    <div class="fab-wrapper" :class="{ 'fab-collapsed': shouldCollapse }">
+    <div class="fab-wrapper" :class="{ 'fab-collapsed': shouldCollapse }" data-onboarding="fab-menu">
     <!-- 刷新按钮（始终显示，位置会根据菜单是否打开而改变） -->
     <button v-if="!isMobile || open" class="fab-main" @click="handleRefresh" title="刷新页面">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
