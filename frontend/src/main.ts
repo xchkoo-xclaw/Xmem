@@ -4,6 +4,7 @@ import App from "./App.vue";
 import router from "./router";
 import "./assets/theme.css";
 import "./assets/tailwind.css";
+import "driver.js/dist/driver.css";
 import { vSecureDisplay } from "./directives/secureDisplay";
 import { useThemeStore } from "./stores/theme";
 

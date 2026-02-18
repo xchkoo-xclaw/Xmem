@@ -19,7 +19,8 @@
         </div>
 
         <div class="space-y-6">
-          <div class="bg-primary rounded-2xl p-4 md:p-6 shadow-inset">
+          <div class="bg-primary rounded-2xl p-4 md:p-6 shadow-inset" data-onboarding="quick-input">
+          <span v-if="currentTab === 'ledger'" data-onboarding="ledger-quick-input-anchor"></span>
             <label class="block text-muted text-sm mb-2">快速输入</label>
             <textarea
               v-model="inputText"
@@ -158,6 +159,7 @@
           <div
             v-if="currentTab === 'ledger'"
             class="rounded-xl p-4 border border-border bg-surface shadow-card hover:shadow-float transition-all duration-200"
+            data-onboarding="ledger-note-generator"
           >
             <div class="flex items-center justify-between mb-3">
               <div>
@@ -323,7 +325,7 @@
                 查看全部 →
               </button>
             </div>
-            <div class="bg-primary rounded-2xl p-4 shadow-inner flex flex-col gap-3">
+            <div class="bg-primary rounded-2xl p-4 shadow-inner flex flex-col gap-3" data-onboarding="todo-panel">
               <!--添加待办输入框-->
               <TodoInput />
 
@@ -444,7 +446,22 @@ const currentTab = computed<"note" | "ledger">({
   },
 });
 
+/**
+ * 同步首页当前 Tab 到全局信号，便于引导流程等待状态。
+ */
+const syncHomeTabSignal = (tab: "note" | "ledger") => {
+  if (typeof window === "undefined") return;
+  (window as any).__xmemHomeTab = tab;
+};
+
 const inputText = ref("");
+watch(
+  currentTab,
+  (tab) => {
+    syncHomeTabSignal(tab);
+  },
+  { immediate: true }
+);
 const isDragging = ref(false);
 
 // 从 localStorage 加载快速输入内容
@@ -1005,7 +1022,6 @@ const startPolling = (ledgerId: number) => {
       
       // 调试日志（开发环境）
       if (import.meta.env.DEV) {
-        console.log(`[轮询] ledger ${ledgerId}: status = "${ledger.status}", amount = ${ledger.amount}`);
       }
       
       // 如果已完成或失败，停止轮询

@@ -3,6 +3,7 @@
     <button
       v-for="tab in tabs"
       :key="tab.value"
+      :data-onboarding="`tab-${tab.value}`"
       :class="[
         'px-3 md:px-4 py-2 text-sm font-semibold rounded-full transition-all duration-200 whitespace-nowrap',
         modelValue === tab.value ? 'bg-accent text-on-accent shadow' : 'text-muted hover:text-text'

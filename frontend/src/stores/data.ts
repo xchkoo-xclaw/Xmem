@@ -147,13 +147,8 @@ export const useDataStore = defineStore("data", {
       }
       
       try {
-        const token = localStorage.getItem("token");
-        console.log("请求参数:", params, "Token:", token ? "存在" : "不存在");
-        
         const response = await api.get("/ledger", { params });
         const data = response.data;
-        console.log("API 响应数据:", data); // 调试用
-        
         // 如果是第一页，替换整个列表；否则追加
         if (page === 1) {
           this.ledgers = data.items || [];
