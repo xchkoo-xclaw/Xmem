@@ -1332,6 +1332,14 @@ const getGreeting = () => {
 .banner-nav {
   @apply w-8 h-8 rounded-full flex items-center justify-center text-lg text-text bg-white/40 hover:bg-white/60 border border-border/50 backdrop-blur-sm transition shrink-0;
 }
+.banner-nav {
+  display: inline-flex;
+}
+@media (max-width: 700px) {
+  .banner-nav {
+    display: none;
+  }
+}
 .banner-track {
   margin: 0 -0.25rem;
 }
