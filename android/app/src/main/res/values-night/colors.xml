@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="xmem_bg">#101218</color>
+    <color name="xmem_surface">#181C24</color>
+    <color name="xmem_surface_2">#202530</color>
+    <color name="xmem_text">#ECEEF1</color>
+    <color name="xmem_text_muted">#A6ADBA</color>
+    <color name="xmem_border">#3E485C</color>
+    <color name="xmem_accent">#E5E7EB</color>
+    <color name="xmem_on_accent">#111827</color>
+</resources>
