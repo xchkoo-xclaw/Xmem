@@ -113,3 +113,6 @@ __pypackages__/
 
 # End of .gitignore
 
+#https certificate
+server.key
+server.crt

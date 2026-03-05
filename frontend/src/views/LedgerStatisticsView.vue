@@ -166,10 +166,17 @@
             <div class="flex flex-wrap items-center gap-3">
               <span class="text-sm text-muted">{{ budgetMonthLabel }}</span>
               <span v-if="budgetAmount !== null" class="text-sm text-text">
-                当前预算 ¥{{ budgetAmount.toLocaleString() }}
+                当前预算 {{ budgetCurrency }} {{ budgetAmount.toLocaleString() }}
               </span>
             </div>
             <div class="flex flex-col md:flex-row gap-3">
+              <div class="min-w-[160px]">
+                <CustomSelect
+                  v-model="budgetCurrency"
+                  :options="budgetCurrencyOptions"
+                  placeholder="选择币种"
+                />
+              </div>
               <input
                 v-model.number="budgetInput"
                 type="number"
@@ -300,6 +307,7 @@ import { useRouter } from "vue-router";
 import { useToastStore } from "../stores/toast";
 import { useThemeStore } from "../stores/theme";
 import VChart from "vue-echarts";
+import CustomSelect from "../components/CustomSelect.vue";
 
 use([
   CanvasRenderer,
@@ -343,6 +351,8 @@ const windowWidth = ref(typeof window !== "undefined" ? window.innerWidth : 1024
 const isNarrowScreen = computed(() => windowWidth.value < 560);
 const budgetInput = ref<number | null>(null);
 const budgetAmount = ref<number | null>(null);
+const budgetAmountCny = ref<number | null>(null);
+const budgetCurrency = ref<string>("CNY");
 const isSavingBudget = ref(false);
 const summaryGenerating = ref(false);
 const ledgerNoteGenerating = ref(false);
@@ -354,6 +364,13 @@ const monthlyTrendEndMonth = ref<string>("");
 const yearlySummaryYear = ref<number>(new Date().getFullYear());
 const yearlyCompareYear = ref<number>(new Date().getFullYear());
 const latestTrendEndMonth = ref<string>("");
+
+const budgetCurrencyOptions = [
+  { label: "CNY (人民币)", value: "CNY" },
+  { label: "USD (美元)", value: "USD" },
+  { label: "EUR (欧元)", value: "EUR" },
+  { label: "JPY (日元)", value: "JPY" }
+];
 
 /**
  * 图表坐标轴与图例文字颜色（适配主题）。
@@ -718,10 +735,13 @@ const buildMonthlyLedgerNoteMarkdown = (statistics: LedgerStatistics) => {
   lines.push(`本月总额：¥${monthTotal.toLocaleString()}`);
   lines.push(`本月笔数：${monthCount} 笔`);
   if (statistics.budget) {
-    const remaining = statistics.budget.amount - monthTotal;
+    const budgetCurrencyValue = statistics.budget.currency || "CNY";
+    const budgetAmountValue = statistics.budget.amount;
+    const budgetAmountCnyValue = statistics.budget.amount_cny ?? budgetAmountValue;
+    const remaining = budgetAmountCnyValue - monthTotal;
     const remainingLabel = remaining >= 0 ? "剩余" : "超出";
     lines.push(
-      `预算：¥${statistics.budget.amount.toLocaleString()}，${remainingLabel} ¥${Math.abs(remaining).toLocaleString()}`
+      `预算：${budgetCurrencyValue} ${budgetAmountValue.toLocaleString()}，${remainingLabel} ¥${Math.abs(remaining).toLocaleString()}`
     );
   }
   const topDays = [...statistics.daily_data].sort((a, b) => b.amount - a.amount).slice(0, 5);
@@ -873,8 +893,8 @@ const calendarCells = computed(() => {
 });
 
 const budgetRemaining = computed(() => {
-  if (budgetAmount.value === null || !budgetStats.value) return 0;
-  return budgetAmount.value - budgetStats.value.current_month_total;
+  if (budgetAmountCny.value === null || !budgetStats.value) return 0;
+  return budgetAmountCny.value - budgetStats.value.current_month_total;
 });
 
 /**
@@ -883,6 +903,8 @@ const budgetRemaining = computed(() => {
 const syncBudgetInput = () => {
   if (!budgetStats.value) return;
   budgetAmount.value = budgetStats.value.budget?.amount ?? null;
+  budgetAmountCny.value = budgetStats.value.budget?.amount_cny ?? budgetAmount.value ?? null;
+  budgetCurrency.value = budgetStats.value.budget?.currency ?? "CNY";
   budgetInput.value = budgetAmount.value ?? null;
 };
 
@@ -899,9 +921,12 @@ const saveBudget = async () => {
   try {
     const result = await data.upsertLedgerBudget(
       budgetStats.value.current_month,
-      Number(budgetInput.value)
+      Number(budgetInput.value),
+      budgetCurrency.value
     );
     budgetAmount.value = result.amount;
+    budgetAmountCny.value = result.amount_cny ?? result.amount;
+    budgetCurrency.value = result.currency;
     budgetStats.value = {
       ...budgetStats.value,
       budget: result,

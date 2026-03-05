@@ -308,11 +308,14 @@ class CategoryStats(BaseModel):
 class LedgerBudgetIn(BaseModel):
     month: str
     amount: float
+    currency: str = "CNY"
 
 
 class LedgerBudgetOut(BaseModel):
     month: str
     amount: float
+    currency: str
+    amount_cny: Optional[float] = None
 
 
 class LedgerMonthlySummaryOut(BaseModel):

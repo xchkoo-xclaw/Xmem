@@ -116,7 +116,7 @@
                       </div>
                       <div v-if="ledgerStatistics" class="h-24 flex flex-col justify-center gap-2">
                         <div v-if="bannerBudgetAmount !== null" class="space-y-1">
-                          <div class="text-lg font-semibold text-text">¥{{ bannerBudgetAmount.toLocaleString() }}</div>
+                          <div class="text-lg font-semibold text-text">{{ bannerBudgetCurrency }} {{ bannerBudgetAmount.toLocaleString() }}</div>
                           <div class="text-xs" :class="bannerBudgetRemaining >= 0 ? 'text-green-600' : 'text-red-600'">
                             {{ bannerBudgetRemaining >= 0 ? "剩余" : "超出" }} ¥{{ Math.abs(bannerBudgetRemaining).toLocaleString() }}
                           </div>
@@ -544,20 +544,21 @@ const bannerMonthLabel = computed(() => {
   return formatMonthLabel(ledgerStatistics.value.current_month);
 });
 
-const bannerBudgetAmount = computed(() => {
-  return ledgerStatistics.value?.budget?.amount ?? null;
-});
+const bannerBudgetAmount = computed(() => ledgerStatistics.value?.budget?.amount ?? null);
+const bannerBudgetCurrency = computed(() => ledgerStatistics.value?.budget?.currency ?? "CNY");
 
 const bannerBudgetRemaining = computed(() => {
-  if (!ledgerStatistics.value || bannerBudgetAmount.value === null) return 0;
-  return bannerBudgetAmount.value - ledgerStatistics.value.current_month_total;
+  if (!ledgerStatistics.value) return 0;
+  const budgetCny = ledgerStatistics.value.budget?.amount_cny ?? ledgerStatistics.value.budget?.amount ?? null;
+  if (budgetCny === null) return 0;
+  return budgetCny - ledgerStatistics.value.current_month_total;
 });
 
 const bannerBudgetProgress = computed(() => {
-  if (!ledgerStatistics.value || bannerBudgetAmount.value === null || bannerBudgetAmount.value === 0) {
-    return 0;
-  }
-  const progress = (ledgerStatistics.value.current_month_total / bannerBudgetAmount.value) * 100;
+  if (!ledgerStatistics.value) return 0;
+  const budgetCny = ledgerStatistics.value.budget?.amount_cny ?? ledgerStatistics.value.budget?.amount ?? 0;
+  if (!budgetCny) return 0;
+  const progress = (ledgerStatistics.value.current_month_total / budgetCny) * 100;
   return Math.min(100, Math.max(0, progress));
 });
 
@@ -1204,7 +1205,10 @@ const groupedLedgers = computed(() => {
 
   const toGroupKey = (timeValue: string) => {
     const d = new Date(timeValue);
-    return d.toISOString().slice(0, 10);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   };
 
   const toGroupLabel = (timeValue: string) => {
@@ -1331,6 +1335,14 @@ const getGreeting = () => {
 }
 .banner-nav {
   @apply w-8 h-8 rounded-full flex items-center justify-center text-lg text-text bg-white/40 hover:bg-white/60 border border-border/50 backdrop-blur-sm transition shrink-0;
+}
+.banner-nav {
+  display: inline-flex;
+}
+@media (max-width: 700px) {
+  .banner-nav {
+    display: none;
+  }
 }
 .banner-track {
   margin: 0 -0.25rem;

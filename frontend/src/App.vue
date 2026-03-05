@@ -478,6 +478,8 @@ const waitForHomeTab = (expected: "note" | "ledger", timeoutMs: number = 4000) =
     if (!user.token) return;
     if (route.name !== "home") return;
     if (onboardingActive.value || isOnboardingDone()) return;
+    const anchor = await waitForElement('[data-onboarding="quick-input"]', 1200);
+    if (!anchor || route.name !== "home") return;
     await startOnboarding();
   };
 

@@ -6,6 +6,7 @@ import logging
 import httpx
 from typing import Dict
 from datetime import datetime, timedelta
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -61,10 +62,10 @@ async def get_exchange_rate_to_cny(currency: str) -> float:
                 # 如果无法获取，尝试使用另一个API
                 return await _get_exchange_rate_fallback(currency, usd_to_cny)
             
-            # 通过USD转换：1 CNY = 1/USD_to_CNY USD
-            # 1 target = target_to_usd USD
-            # 1 target = target_to_usd * usd_to_cny CNY
-            target_to_cny = target_to_usd * usd_to_cny
+            # 通过USD转换：1 USD = target_to_usd 目标货币
+            # 1 目标货币 = 1 / target_to_usd USD
+            # 1 目标货币 = (usd_to_cny / target_to_usd) CNY
+            target_to_cny = usd_to_cny / target_to_usd
             
             # 更新缓存
             _exchange_rate_cache[cache_key] = (target_to_cny, datetime.now())
@@ -99,7 +100,7 @@ async def _get_exchange_rate_fallback(currency: str, usd_to_cny: float) -> float
         
         if currency_upper in common_rates_to_usd:
             rate_to_usd = common_rates_to_usd[currency_upper]
-            return rate_to_usd * usd_to_cny
+            return usd_to_cny / rate_to_usd
         
         # 如果都不匹配，返回默认值
         logger.warning(f"未知货币 {currency_upper}，使用默认汇率")
@@ -144,4 +145,11 @@ def convert_to_cny(amount: float, currency: str, exchange_rate: float) -> float:
     if currency.upper() == "CNY":
         return amount
     return amount * exchange_rate
+
+# for test
+if __name__ == "__main__":
+    currency = "JPY"
+    rate = asyncio.run(get_exchange_rate_to_cny(currency))
+    print(f"1 {currency} = {rate} CNY")
+    print("1000 JPY =", convert_to_cny(1000, currency, rate), "CNY")
 

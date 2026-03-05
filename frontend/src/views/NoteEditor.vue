@@ -16,6 +16,13 @@
       
       <div class="flex items-center gap-2">
         <button
+          v-if="isMobileViewportActive"
+          @click="togglePreviewMode"
+          class="btn ghost flex items-center gap-2"
+        >
+          {{ previewToggleLabel }}
+        </button>
+        <button
           @click="handleSave"
           class="btn ghost flex items-center gap-2"
           :disabled="!content.trim() || saving"
@@ -26,14 +33,17 @@
     </header>
 
     <main class="w-full max-w-4xl md:max-w-7xl mx-auto px-4 pb-20">
-      <div ref="cardRef" class="note-editor-card bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8">
-        <MdEditor 
-          ref="editorRef"
+      <div
+        ref="cardRef"
+        class="note-editor-card bg-surface border border-border rounded-3xl shadow-card p-6 md:p-8"
+        :class="mobileEditorClass"
+      >
+        <MdEditor  
           v-secure-display
           v-model="content" 
           @onUploadImg="onUploadImg"
           class="min-h-[600px] rounded-xl border border-border"
-          :toolbars="toolbars"
+          :toolbars="isMobileViewportActive ? toolbarsMobile : toolbarsDesktop"
           :toolbarsExclude="['github']"
           :theme="theme.resolvedTheme"
         >
@@ -55,9 +65,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick } from "vue";
+import { ref, onMounted, onUnmounted, watch, nextTick, computed } from "vue";
 import { useRouter } from "vue-router";
-import { MdEditor, NormalToolbar, type ToolbarNames, type ExposeParam } from 'md-editor-v3';
+import { MdEditor, NormalToolbar, type ToolbarNames } from 'md-editor-v3';
 import 'md-editor-v3/lib/style.css';
 import { useDataStore } from "../stores/data";
 import { useToastStore } from "../stores/toast";
@@ -86,12 +96,13 @@ const handleBack = () => {
 const content = ref("");
 const saving = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
-const editorRef = ref<ExposeParam | null>(null);
 const cardRef = ref<HTMLElement | null>(null);
 const resizeRaf = ref<number | null>(null);
+const isMobileViewportActive = ref(false);
+const isMobilePreviewMode = ref(false);
 
 // 自定义工具栏配置
-const toolbars: ToolbarNames[] = [
+const toolbarsDesktop: ToolbarNames[] = [
   'bold',
   'underline',
   'italic',
@@ -117,9 +128,39 @@ const toolbars: ToolbarNames[] = [
   'revoke',
   'next',
   '=',
+  'preview',
   'pageFullscreen',
   'fullscreen',
-  'preview',
+  'catalog',
+];
+const toolbarsMobile: ToolbarNames[] = [
+  'bold',
+  'underline',
+  'italic',
+  '-',
+  'title',
+  'strikeThrough',
+  'sub',
+  'sup',
+  'quote',
+  'unorderedList',
+  'orderedList',
+  'task',
+  '-',
+  'codeRow',
+  'code',
+  'link',
+  'image',
+  0,
+  'table',
+  'mermaid',
+  'katex',
+  '-',
+  'revoke',
+  'next',
+  '=',
+  'pageFullscreen',
+  'fullscreen',
   'catalog',
 ];
 
@@ -131,13 +172,44 @@ const isMobileViewport = () => {
   return window.innerWidth <= 700;
 };
 
+const previewToggleLabel = computed(() => (isMobilePreviewMode.value ? "输入" : "预览"));
+const mobileEditorClass = computed(() => {
+  if (!isMobileViewportActive.value) return "";
+  return isMobilePreviewMode.value ? "mobile-preview-only" : "mobile-input-only";
+});
+
 /**
  * 移动端默认关闭预览面板，避免左右分屏
  */
 const applyMobilePreviewDefault = async () => {
   if (!isMobileViewport()) return;
+  isMobilePreviewMode.value = false;
   await nextTick();
-  editorRef.value?.togglePreview(false);
+};
+
+/**
+ * 同步视口尺寸与移动端模式状态
+ */
+const updateViewportState = () => {
+  if (typeof window === "undefined") return;
+  const next = isMobileViewport();
+  if (next === isMobileViewportActive.value) return;
+  isMobileViewportActive.value = next;
+  if (next) {
+    isMobilePreviewMode.value = false;
+    nextTick(() => {
+      scheduleEditorPaneHeight();
+    });
+  }
+};
+
+/**
+ * 切换移动端预览与输入模式
+ */
+const togglePreviewMode = () => {
+  const next = !isMobilePreviewMode.value;
+  isMobilePreviewMode.value = next;
+  scheduleEditorPaneHeight();
 };
 
 /**
@@ -149,7 +221,7 @@ const updateEditorPaneHeight = () => {
   if (!scroller) return;
   const rawHeight = Math.ceil(scroller.scrollHeight || scroller.clientHeight || 0);
   const paneHeight = Math.min(1200, rawHeight > 0 ? rawHeight : 600);
-  const totalHeight = Math.min(2400, paneHeight * 2);
+  const totalHeight = isMobileViewportActive.value ? paneHeight : Math.min(2400, paneHeight * 2);
   cardRef.value.style.setProperty("--note-editor-pane-height", `${paneHeight}px`);
   cardRef.value.style.setProperty("--note-editor-total-height", `${totalHeight}px`);
 };
@@ -259,9 +331,10 @@ const loadNoteContent = async () => {
 // 组件挂载时加载笔记内容
 onMounted(() => {
   loadNoteContent();
+  updateViewportState();
   applyMobilePreviewDefault();
   scheduleEditorPaneHeight();
-  window.addEventListener("resize", scheduleEditorPaneHeight);
+  window.addEventListener("resize", handleResize);
 });
 
 // 监听 noteId 变化，重新加载内容
@@ -274,8 +347,16 @@ watch(content, () => {
   scheduleEditorPaneHeight();
 }, { flush: "post" });
 
+/**
+ * 处理窗口尺寸变化
+ */
+const handleResize = () => {
+  updateViewportState();
+  scheduleEditorPaneHeight();
+};
+
 onUnmounted(() => {
-  window.removeEventListener("resize", scheduleEditorPaneHeight);
+  window.removeEventListener("resize", handleResize);
   if (resizeRaf.value !== null) {
     cancelAnimationFrame(resizeRaf.value);
   }
@@ -428,6 +509,21 @@ const handleSave = async () => {
   :deep(.md-editor-preview-wrapper) {
     border-left: 0;
     border-top: 1px solid rgb(var(--c-border));
+  }
+}
+
+@media (max-width: 700px) {
+  .note-editor-card {
+    height: var(--note-editor-pane-height, 1200px);
+    max-height: 1200px;
+  }
+  .note-editor-card.mobile-input-only :deep(.md-editor-preview-wrapper),
+  .note-editor-card.mobile-input-only :deep(.md-editor-preview) {
+    display: none !important;
+  }
+  .note-editor-card.mobile-preview-only :deep(.md-editor-input-wrapper),
+  .note-editor-card.mobile-preview-only :deep(.md-editor-input) {
+    display: none !important;
   }
 }
 </style>
