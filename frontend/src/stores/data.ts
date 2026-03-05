@@ -88,7 +88,7 @@ export interface LedgerStatistics {
   month_diff_percent: number;
   ai_summary?: string | null;
   ledger_note_id?: number | null;
-  budget?: { month: string; amount: number } | null;
+  budget?: { month: string; amount: number; currency: string; amount_cny?: number | null } | null;
 }
 
 export interface LedgerMonthlySummary {
@@ -197,8 +197,8 @@ export const useDataStore = defineStore("data", {
     /**
      * 创建或更新指定月份的预算。
      */
-    async upsertLedgerBudget(month: string, amount: number) {
-      const { data } = await api.put("/ledger/budget", { month, amount });
+    async upsertLedgerBudget(month: string, amount: number, currency: string) {
+      const { data } = await api.put("/ledger/budget", { month, amount, currency });
       return data;
     },
     async fetchTodos(completed?: boolean) {

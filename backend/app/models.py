@@ -87,6 +87,7 @@ class LedgerBudget(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     month = Column(String(7), index=True, nullable=False)
     amount = Column(Float, nullable=False)
+    currency = Column(String(16), default="CNY", nullable=False)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 

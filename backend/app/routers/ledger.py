@@ -55,6 +55,72 @@ def _add_months(year: int, month: int, offset: int) -> tuple[int, int]:
     return new_year, new_month
 
 
+def _normalize_currency(value: str) -> str:
+    """标准化并校验货币代码。"""
+    currency = value.strip().upper().split()[0] if isinstance(value, str) else ""
+    if currency not in {"CNY", "USD", "EUR", "JPY"}:
+        raise HTTPException(status_code=400, detail="货币必须是 CNY、USD、EUR、JPY 之一")
+    return currency
+
+
+async def _get_or_inherit_budget(
+    session: AsyncSession,
+    user_id: int,
+    month: str,
+) -> models.LedgerBudget | None:
+    """获取预算，如不存在则继承上个月的预算。"""
+    result = await session.execute(
+        select(models.LedgerBudget).where(
+            models.LedgerBudget.user_id == user_id,
+            models.LedgerBudget.month == month,
+        )
+    )
+    budget = result.scalar_one_or_none()
+    if budget:
+        return budget
+    parsed = _parse_month(month)
+    prev_year, prev_month = _add_months(parsed.year, parsed.month, -1)
+    prev_month_str = _format_month(prev_year, prev_month)
+    prev_result = await session.execute(
+        select(models.LedgerBudget).where(
+            models.LedgerBudget.user_id == user_id,
+            models.LedgerBudget.month == prev_month_str,
+        )
+    )
+    prev_budget = prev_result.scalar_one_or_none()
+    if not prev_budget:
+        return None
+    budget = models.LedgerBudget(
+        user_id=user_id,
+        month=month,
+        amount=prev_budget.amount,
+        currency=prev_budget.currency or "CNY",
+    )
+    session.add(budget)
+    await session.commit()
+    await session.refresh(budget)
+    return budget
+
+
+async def _build_budget_out(
+    budget: models.LedgerBudget,
+    exchange_rates: dict[str, float],
+) -> schemas.LedgerBudgetOut:
+    """构建带折算金额的预算响应。"""
+    currency = budget.currency or "CNY"
+    rate = exchange_rates.get(currency)
+    if rate is None:
+        rate = await get_exchange_rate_to_cny(currency)
+        exchange_rates[currency] = rate
+    amount_cny = convert_to_cny(budget.amount, currency, rate)
+    return schemas.LedgerBudgetOut(
+        month=budget.month,
+        amount=budget.amount,
+        currency=currency,
+        amount_cny=amount_cny,
+    )
+
+
 def _resolve_target_year(month_value: str, year_value: int | None) -> int:
     """解析统计使用的目标年份。"""
     if year_value is not None:
@@ -342,16 +408,11 @@ async def get_ledger_budget(
     """获取当前用户指定月份的预算。"""
     target_month = month or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m")
     _parse_month(target_month)
-    result = await session.execute(
-        select(models.LedgerBudget).where(
-            models.LedgerBudget.user_id == current_user.id,
-            models.LedgerBudget.month == target_month,
-        )
-    )
-    budget = result.scalar_one_or_none()
+    budget = await _get_or_inherit_budget(session, current_user.id, target_month)
     if not budget:
         return None
-    return schemas.LedgerBudgetOut(month=budget.month, amount=budget.amount)
+    exchange_rates: dict[str, float] = {}
+    return await _build_budget_out(budget, exchange_rates)
 
 
 @router.put("/budget", response_model=schemas.LedgerBudgetOut)
@@ -365,6 +426,7 @@ async def upsert_ledger_budget(
     _parse_month(target_month)
     if payload.amount < 0:
         raise HTTPException(status_code=400, detail="预算金额不能为负数")
+    currency = _normalize_currency(payload.currency)
     result = await session.execute(
         select(models.LedgerBudget).where(
             models.LedgerBudget.user_id == current_user.id,
@@ -374,17 +436,20 @@ async def upsert_ledger_budget(
     budget = result.scalar_one_or_none()
     if budget:
         budget.amount = payload.amount
+        budget.currency = currency
         budget.updated_at = models.utc_now()
     else:
         budget = models.LedgerBudget(
             user_id=current_user.id,
             month=target_month,
             amount=payload.amount,
+            currency=currency,
         )
         session.add(budget)
     await session.commit()
     await session.refresh(budget)
-    return schemas.LedgerBudgetOut(month=budget.month, amount=budget.amount)
+    exchange_rates: dict[str, float] = {}
+    return await _build_budget_out(budget, exchange_rates)
 
 
 @router.post("/statistics/ai-summary", response_model=schemas.LedgerMonthlySummaryOut)
@@ -634,16 +699,8 @@ async def get_ledger_statistics(
         )
 
     # 获取预算
-    budget_result = await session.execute(
-        select(models.LedgerBudget).where(
-            models.LedgerBudget.user_id == current_user.id,
-            models.LedgerBudget.month == current_month_str,
-        )
-    )
-    budget = budget_result.scalar_one_or_none()
-    budget_out = (
-        schemas.LedgerBudgetOut(month=budget.month, amount=budget.amount) if budget else None
-    )
+    budget = await _get_or_inherit_budget(session, current_user.id, current_month_str)
+    budget_out = await _build_budget_out(budget, exchange_rates) if budget else None
 
     ai_summary: str | None = None
     summary_record = None
