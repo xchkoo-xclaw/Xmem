@@ -2607,7 +2607,7 @@ wheels = [
 
 [[package]]
 name = "xmem-backend"
-version = "1.4.1"
+version = "1.4.3"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
