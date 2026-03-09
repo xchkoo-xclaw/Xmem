@@ -78,6 +78,7 @@ jobs:
           tags: ${{ env.FRONTEND_TAGS }}
           build-args: |
             VITE_API_URL=/api
+          no-cache: true
 
   github_release:
     runs-on: ubuntu-latest
