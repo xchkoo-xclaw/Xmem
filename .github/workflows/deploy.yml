@@ -34,18 +34,52 @@ jobs:
           command_timeout: 120m
           script: |
             cd /home/xmem/Xmem
-            ref="${{ github.event.inputs.ref }}"
-            run_build="${{ github.event.inputs.compose_build }}"
+            
+            # Default values
+            TARGET_REF="main"
+            DOCKER_TAG="latest"
+            
+            EVENT_NAME="${{ github.event_name }}"
+            RELEASE_TAG="${{ github.event.release.tag_name }}"
+            INPUT_REF="${{ github.event.inputs.ref }}"
+            
+            if [ "$EVENT_NAME" = "release" ]; then
+              TARGET_REF="$RELEASE_TAG"
+              # Match release.yml logic: tag="${GITHUB_REF_NAME}", version="${tag#*/}"
+              # If tag is xmem/v1.5.2, version is v1.5.2
+              DOCKER_TAG="${RELEASE_TAG#*/}"
+            elif [ -n "$INPUT_REF" ]; then
+              TARGET_REF="$INPUT_REF"
+              # If manual input starts with xmem/, use the suffix as version tag
+              if [[ "$INPUT_REF" == xmem/* ]]; then
+                DOCKER_TAG="${INPUT_REF#*/}"
+              elif [[ "$INPUT_REF" == v* ]]; then
+                 DOCKER_TAG="$INPUT_REF"
+              else
+                 # Fallback to latest for branches or unknown formats
+                 DOCKER_TAG="latest"
+              fi
+            fi
+            
+            echo "Deploying Ref: $TARGET_REF"
+            echo "Docker Tag: $DOCKER_TAG"
+            
             git fetch --all --tags
-            if [ -n "$ref" ]; then
-              git checkout --force "$ref"
-            else
-              git checkout --force main
+            git checkout --force "$TARGET_REF"
+            
+            if [ "$TARGET_REF" = "main" ]; then
               git pull origin main
             fi
+            
+            # Export GHCR_TAG so docker compose picks it up
+            export GHCR_TAG="$DOCKER_TAG"
+            
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.GHCR_USER }}" --password-stdin
+            
             docker compose pull
-            if [ "$run_build" = "true" ]; then
+            
+            if [ "${{ github.event.inputs.compose_build }}" = "true" ]; then
               docker compose build --progress plain
             fi
+            
             docker compose up -d
