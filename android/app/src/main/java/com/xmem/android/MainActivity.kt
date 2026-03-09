@@ -1,97 +1,118 @@
 package com.xmem.android
 
-import android.content.Context
-import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
-import android.widget.EditText
-import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.xmem.android.ui.auth.AuthScreen
+import com.xmem.android.ui.main.MainContainer
+import com.xmem.android.ui.ledgers.LedgerStatisticsScreen
+import com.xmem.android.ui.notes.NoteDetailScreen
+import com.xmem.android.ui.notes.NoteEditorScreen
+import com.xmem.android.ui.navigation.Screen
+import com.xmem.android.ui.theme.XmemTheme
+import dagger.hilt.android.AndroidEntryPoint
 
-class MainActivity : AppCompatActivity() {
-
-    private lateinit var baseUrlInput: EditText
-    private lateinit var tokenInput: EditText
-    private lateinit var statusText: TextView
-
-    /**
-     * 初始化主页并绑定按钮行为。
-     */
+@AndroidEntryPoint
+class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-        bindViews()
-        bindActions()
-        loadSettings()
-        updateStatus(getString(R.string.status_idle))
-    }
-
-    /**
-     * 绑定页面控件引用。
-     */
-    private fun bindViews() {
-        baseUrlInput = findViewById(R.id.input_base_url)
-        tokenInput = findViewById(R.id.input_token)
-        statusText = findViewById(R.id.text_status)
-    }
-
-    /**
-     * 注册按钮点击事件。
-     */
-    private fun bindActions() {
-        val saveButton = findViewById<Button>(R.id.btn_save)
-        val captureButton = findViewById<Button>(R.id.btn_capture)
-
-        saveButton.setOnClickListener {
-            saveSettings()
-            updateStatus(getString(R.string.status_idle))
-        }
-
-        captureButton.setOnClickListener {
-            startCaptureFlow()
+        setContent {
+            XmemTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    XmemNavHost()
+                }
+            }
         }
     }
+}
 
-    /**
-     * 读取并填充已保存的连接配置。
-     */
-    private fun loadSettings() {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        baseUrlInput.setText(prefs.getString(KEY_BASE_URL, DEFAULT_BASE_URL))
-        tokenInput.setText(prefs.getString(KEY_TOKEN, ""))
-    }
+@Composable
+fun XmemNavHost() {
+    val navController = rememberNavController()
+    // TODO: 获取登录状态，决定起始页
+    val startDestination = Screen.Login.route
 
-    /**
-     * 保存当前连接配置到本地。
-     */
-    private fun saveSettings() {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit()
-            .putString(KEY_BASE_URL, baseUrlInput.text.toString().trim())
-            .putString(KEY_TOKEN, tokenInput.text.toString().trim())
-            .apply()
-    }
-
-    /**
-     * 启动截图授权流程页面。
-     */
-    private fun startCaptureFlow() {
-        updateStatus(getString(R.string.status_capture))
-        val intent = Intent(this, CaptureActivity::class.java)
-        startActivity(intent)
-    }
-
-    /**
-     * 更新页面状态提示文本。
-     */
-    private fun updateStatus(message: String) {
-        statusText.text = message
-    }
-
-    companion object {
-        private const val PREFS_NAME = "xmem_capture_prefs"
-        private const val KEY_BASE_URL = "base_url"
-        private const val KEY_TOKEN = "auth_token"
-        private const val DEFAULT_BASE_URL = "http://10.0.2.2:8000"
+    NavHost(
+        navController = navController,
+        startDestination = startDestination
+    ) {
+        composable(Screen.Login.route) {
+            AuthScreen(
+                isRegister = false,
+                onAuthSuccess = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                },
+                onToggleMode = {
+                    navController.navigate(Screen.Register.route)
+                }
+            )
+        }
+        composable(Screen.Register.route) {
+            AuthScreen(
+                isRegister = true,
+                onAuthSuccess = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Register.route) { inclusive = true }
+                    }
+                },
+                onToggleMode = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable(Screen.Home.route) {
+            MainContainer(
+                onLogout = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                },
+                onNoteClick = { noteId ->
+                    navController.navigate(Screen.NoteDetail.createRoute(noteId.toInt()))
+                },
+                onAddNote = {
+                    navController.navigate(Screen.NoteEditor.createRoute(null))
+                },
+                onStatisticsClick = {
+                    navController.navigate(Screen.Statistics.route)
+                }
+            )
+        }
+        composable(Screen.Statistics.route) {
+            LedgerStatisticsScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.NoteDetail.route) { backStackEntry ->
+            val noteId = backStackEntry.arguments?.getString("noteId")?.toLongOrNull() ?: 0L
+            NoteDetailScreen(
+                noteId = noteId,
+                onBack = { navController.popBackStack() },
+                onEdit = { id -> navController.navigate(Screen.NoteEditor.createRoute(id.toInt())) }
+            )
+        }
+        composable(Screen.NoteEditor.route) { backStackEntry ->
+            val noteIdStr = backStackEntry.arguments?.getString("noteId")
+            val noteId = if (noteIdStr == "-1" || noteIdStr == null) null else noteIdStr.toLongOrNull()
+            NoteEditorScreen(
+                noteId = noteId,
+                onBack = { navController.popBackStack() }
+            )
+        }
+        // ... 其他路由
     }
 }
