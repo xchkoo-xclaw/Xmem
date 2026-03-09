@@ -220,7 +220,8 @@
             <div 
               v-for="(item, index) in categoryStats?.category_stats || []"
               :key="item.category"
-              class="flex items-center gap-3 p-3 bg-surface2 border border-border rounded-lg"
+              class="flex items-center gap-3 p-3 bg-surface2 border border-border rounded-lg cursor-pointer transition hover:border-border/70 hover:bg-surface"
+              @click="handleCategoryJump(item.category)"
             >
               <div 
                 class="w-4 h-4 rounded-full flex-shrink-0"
@@ -336,6 +337,10 @@ const handleBack = () => {
     return;
   }
   router.push({ name: "home" });
+};
+
+const handleCategoryJump = (category: string) => {
+  router.push({ name: "ledgers", query: { category } });
 };
 
 const data = useDataStore();

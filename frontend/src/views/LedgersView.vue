@@ -133,10 +133,11 @@ import LedgerCardContent from "../components/LedgerCardContent.vue";
 import LedgerStatsCard from "../components/LedgerStatsCard.vue";
 import CustomSelect from "../components/CustomSelect.vue";
 import type { LedgerEntry } from "../stores/data";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useLedgerEditorStore } from "../stores/ledgerEditor";
 
 const router = useRouter();
+const route = useRoute();
 
 const data = useDataStore();
 const confirm = useConfirmStore();
@@ -338,8 +339,27 @@ const handleStatisticsClick = () => {
   router.push({ name: "statistics" });
 };
 
+const applyCategoryFromQuery = (value: unknown) => {
+  if (typeof value !== "string") {
+    selectedCategory.value = "";
+    return;
+  }
+  selectedCategory.value = categories.includes(value) ? value : "";
+};
+
+watch(
+  () => route.query.category,
+  (value) => {
+    applyCategoryFromQuery(value);
+  }
+);
+
 // 组件挂载时加载第一页
 onMounted(() => {
+  if (route.query.category) {
+    applyCategoryFromQuery(route.query.category);
+    return;
+  }
   loadPage(1);
 });
 </script>

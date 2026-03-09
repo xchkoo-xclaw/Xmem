@@ -95,7 +95,14 @@
           <div v-if="currentTab === 'ledger'">
             <div class="flex items-center gap-3">
               <button class="banner-nav" @click="handleBannerPrev">‹</button>
-              <div class="flex-1 overflow-hidden rounded-2xl bg-surface2 p-1">
+              <div
+                class="flex-1 overflow-hidden rounded-2xl bg-surface2 p-1"
+                style="touch-action: pan-y;"
+                @touchstart="handleBannerTouchStart"
+                @touchmove="handleBannerTouchMove"
+                @touchend="handleBannerTouchEnd"
+                @touchcancel="handleBannerTouchEnd"
+              >
                 <div class="flex transition-transform duration-500 banner-track" :style="bannerTranslateStyle">
                   <div class="w-full flex-shrink-0 px-1">
                     <LedgerStatsCard @click="router.push('/statistics')" />
@@ -536,7 +543,7 @@ const maxNotesToShow = computed(() => {
 });
 
 const bannerTranslateStyle = computed(() => ({
-  transform: `translateX(-${bannerIndex.value * 100}%)`,
+  transform: `translateX(calc(-${bannerIndex.value * 100}% + ${touchDeltaX.value}px))`,
 }));
 
 const bannerMonthLabel = computed(() => {
@@ -546,6 +553,10 @@ const bannerMonthLabel = computed(() => {
 
 const bannerBudgetAmount = computed(() => ledgerStatistics.value?.budget?.amount ?? null);
 const bannerBudgetCurrency = computed(() => ledgerStatistics.value?.budget?.currency ?? "CNY");
+const touchStartX = ref(0);
+const touchStartY = ref(0);
+const touchDeltaX = ref(0);
+const isSwipingBanner = ref(false);
 
 const bannerBudgetRemaining = computed(() => {
   if (!ledgerStatistics.value) return 0;
@@ -724,6 +735,37 @@ const loadLedgerStatistics = async () => {
  */
 const setBannerIndex = (index: number) => {
   bannerIndex.value = index;
+};
+
+const handleBannerTouchStart = (event: TouchEvent) => {
+  const touch = event.touches[0];
+  if (!touch) return;
+  touchStartX.value = touch.clientX;
+  touchStartY.value = touch.clientY;
+  touchDeltaX.value = 0;
+  isSwipingBanner.value = true;
+  stopBannerRotation();
+};
+
+const handleBannerTouchMove = (event: TouchEvent) => {
+  if (!isSwipingBanner.value) return;
+  const touch = event.touches[0];
+  if (!touch) return;
+  touchDeltaX.value = touch.clientX - touchStartX.value;
+};
+
+const handleBannerTouchEnd = () => {
+  if (!isSwipingBanner.value) return;
+  const threshold = 40;
+  if (touchDeltaX.value > threshold) {
+    handleBannerPrev();
+  } else if (touchDeltaX.value < -threshold) {
+    handleBannerNext();
+  } else {
+    startBannerRotation();
+  }
+  touchDeltaX.value = 0;
+  isSwipingBanner.value = false;
 };
 
 /**
