@@ -560,7 +560,7 @@ async def get_ledger_statistics(
             exchange_rates[currency] = await get_exchange_rate_to_cny(currency)
         except Exception as e:
             logger.warning(f"获取 {currency} 汇率失败: {str(e)}，使用默认值")
-            exchange_rates[currency] = {"CNY": 1.0, "USD": 7.2, "EUR": 7.8, "JPY": 0.048}.get(currency, 1.0)  # 使用默认汇率
+            exchange_rates[currency] = await get_exchange_rate_to_cny(currency)  # 会使用默认值
     
     current_month_str = _format_month(target_month_year, target_month_value)
 

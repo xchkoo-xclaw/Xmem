@@ -1,7 +1,7 @@
 import datetime as dt
 from typing import Optional, List, Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr
 
 
 def _encode_datetime_utc(value: dt.datetime | None):
@@ -200,7 +200,7 @@ class NoteShareOut(NoteBase):
 
 
 class LedgerCreate(BaseModel):
-    text: Optional[str] = Field(None, max_length=10000, description="账本文本输入，最大长度 10000 字符")  # 文本输入，如果提供图片则可以为空
+    text: Optional[str] = None  # 文本输入，如果提供图片则可以为空
 
 
 class LedgerUpdate(BaseModel):
@@ -209,7 +209,7 @@ class LedgerUpdate(BaseModel):
     currency: Optional[str] = None
     category: Optional[str] = None
     merchant: Optional[str] = None
-    raw_text: Optional[str] = Field(None, max_length=10000, description="原始账本文本，最大长度 10000 字符")
+    raw_text: Optional[str] = None
     event_time: Optional[dt.datetime] = None
 
 
